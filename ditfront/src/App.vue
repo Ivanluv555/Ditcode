@@ -1,0 +1,2074 @@
+<template>
+  <router-view v-if="isStandaloneRoute"></router-view>
+
+  <div
+    ref="appShellRef"
+    v-else
+    class="app-shell"
+    :class="[`theme-${activeTheme}`]"
+    :style="layoutVars"
+  >
+    <aside ref="sidebarRef" class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
+      <div class="sidebar-top">
+        <button class="collapse-btn" @click="toggleSidebar" style="background: transparent; box-shadow: none; border: none; padding: 4px; cursor: pointer;">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hamburger-icon">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="sidebar-body">
+        <nav class="sidebar-nav" v-show="!isSidebarCollapsed">
+          <RouterLink
+            to="/"
+            class="sidebar-action primary"
+            :class="{ active: route.path === '/' }"
+            @click="startNewWork"
+          >
+            <span class="action-icon plus-icon" aria-hidden="true"></span>
+            <span>发起新工作</span>
+          </RouterLink>
+
+          <RouterLink
+            to="/my-content"
+            class="sidebar-action"
+            :class="{ active: route.path.startsWith('/my-content') }"
+            @click="collapseModelPanels"
+          >
+            <span class="action-icon content-icon" aria-hidden="true"></span>
+            <span>我的内容</span>
+          </RouterLink>
+        </nav>
+
+        <div v-if="history.length > 0" class="history-block" v-show="!isSidebarCollapsed">
+          <div class="history-title">最近工作</div>
+          <div
+            v-for="item in history"
+            :key="item.id"
+            class="history-item"
+          >
+            <button class="history-open" @click="openModelFromHistory(item.id)">
+              <span class="history-open-main">
+                <span class="history-main">{{ item.title || item.lastMessage || '未命名存档' }}</span>
+                <span class="history-meta">{{ formatDate(item.updatedAt || item.createdAt) }}</span>
+              </span>
+            </button>
+            <button
+              v-if="item.canDelete"
+              class="history-delete"
+              title="删除存档"
+              @click.stop="requestDeleteArchive(item.id)"
+            >
+              <span class="history-delete-icon" :style="deleteIconStyle" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="sidebar-footer">
+          <button
+            type="button"
+            ref="settingsBtnRef"
+            class="sidebar-action footer-action"
+            @click="openSettingsModal"
+            :style="{ justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', padding: isSidebarCollapsed ? '12px' : '12px 14px' }"
+          >
+            <span class="action-icon settings-icon" aria-hidden="true" :style="{ margin: isSidebarCollapsed ? '0' : '' }"></span>
+            <span v-show="!isSidebarCollapsed">设置与帮助</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <main
+      class="content"
+      :class="{
+        'workspace-hidden': !showWorkspacePanels,
+        'welcome-locked': isHomeWelcomeState
+      }"
+    >
+      <header class="topbar">
+        <div class="topbar-left">
+          <button
+            class="brand"
+            ref="brandRef"
+            @click="goHome"
+          >
+            <span class="brand-dot"></span>
+            <span class="brand-text">
+              <span class="brand-title">ditapp</span>
+              <span class="brand-subtitle">AI Studio</span>
+            </span>
+          </button>
+
+          <div class="title-block" v-if="showBackBtn && !isCommunityRoute">
+            <p class="title-sub">ditapp workspace</p>
+            <h2 class="title-main">{{ pageTitle }}</h2>
+          </div>
+        </div>
+
+        <div class="top-right">
+          <template v-if="showWorkspaceControls">
+            <button class="widget-btn" title="社区" @click="goCommunity">
+              <img class="widget-icon" :src="communityIcon" alt="community widget" />
+            </button>
+            <button
+              v-if="hasModelDrawer && !isHomeWelcomeState"
+              class="widget-btn"
+              title="建模抽屉"
+              @click="toggleModelDrawer"
+            >
+              <img class="widget-icon" :src="uShowIcon" alt="model drawer" />
+            </button>
+          </template>
+          <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
+            <img class="avatar-icon" src="/admin.jpg" alt="avatar" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+          </button>
+        </div>
+      </header>
+
+      <router-view></router-view>
+
+      <Transition
+        :css="false"
+        @before-enter="onComposerBeforeEnter"
+        @enter="onComposerEnter"
+        @leave="onComposerLeave"
+      >
+        <div v-if="showComposerPanel" class="bottom-composer-wrap">
+          <div class="bottom-composer">
+            <textarea
+              ref="composerInputRef"
+              v-model="promptText"
+              rows="1"
+              class="composer-input"
+              placeholder="输入你的建模描述，支持附带参考图..."
+              @input="onComposerInput"
+            ></textarea>
+
+            <div class="composer-tools">
+              <template v-if="allowImageAttachment">
+                <label class="tool-btn" for="app-image-upload">上传图片</label>
+                <input id="app-image-upload" type="file" accept="image/*" @change="onPickFile" />
+                <span v-if="imageFile" class="file-tag">{{ imageFile.name }}</span>
+                <button v-if="imageFile" class="tool-btn ghost" @click="clearImage">移除</button>
+              </template>
+              <button class="send-btn" aria-label="发送生成请求" @click="generateFromComposer">
+                <img :src="sendIcon" class="send-icon" alt="send" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </main>
+
+    <aside v-if="showWorkspacePanels && hasModelDrawer && isModelDrawerOpen" class="model-drawer">
+      <div class="model-drawer-head">
+        <span>建模区</span>
+        <button class="drawer-close" @click="isModelDrawerOpen = false">关闭</button>
+      </div>
+      <div class="model-drawer-body">
+        <Workshop />
+      </div>
+    </aside>
+
+    <Teleport to="body">
+      <Transition
+        :css="false"
+        @before-enter="onFadeBeforeEnter"
+        @enter="onFadeEnter"
+        @leave="onFadeLeave"
+      >
+        <div v-if="showUserModal" class="dropdown-shell" @click="closeUserModal">
+          <Transition
+            :css="false"
+            @before-enter="onDropdownPanelBeforeEnter"
+            @enter="(el, done) => onDropdownPanelEnter(el, done, 'user')"
+            @leave="onDropdownPanelLeave"
+          >
+            <div class="user-modal dropdown-panel user-dropdown" :style="userDropdownStyle" @click.stop>
+              <h3 class="dropdown-item" style="--i: 0">用户信息</h3>
+              <p class="dropdown-item" style="--i: 1"><strong>用户名：</strong>{{ currentUser?.username }}</p>
+              <p class="dropdown-item" style="--i: 2"><strong>邮箱：</strong>{{ currentUser?.email }}</p>
+              <div class="theme-row dropdown-item" style="--i: 3">
+                <span>主题模式：{{ activeTheme === 'dark' ? '暗色' : '亮色' }}</span>
+                <button class="modal-btn" @click="toggleThemeManually">
+                  切换为{{ activeTheme === 'dark' ? '亮色' : '暗色' }}
+                </button>
+              </div>
+              <div class="modal-actions dropdown-item" style="--i: 4">
+                <button class="modal-btn" @click="closeUserModal">关闭</button>
+                <button class="modal-btn danger" @click="logoutFromModal">退出登录</button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <Transition
+        :css="false"
+        @before-enter="onFadeBeforeEnter"
+        @enter="onFadeEnter"
+        @leave="onFadeLeave"
+      >
+        <div v-if="showSettingsModal" class="dropdown-shell" @click="closeSettingsModal">
+          <Transition
+            :css="false"
+            @before-enter="onDropdownPanelBeforeEnter"
+            @enter="(el, done) => onDropdownPanelEnter(el, done, 'settings')"
+            @leave="onDropdownPanelLeave"
+          >
+            <div class="user-modal settings-modal dropdown-panel settings-dropdown" :style="settingsDropdownStyle" @click.stop>
+              <h3 class="dropdown-item" style="--i: 0">设置与帮助</h3>
+              <p class="dropdown-item" style="--i: 1">这里保留最常用的本地设置，不再单独跳转到设置页。</p>
+              <div class="settings-group">
+                <div class="settings-row dropdown-item" style="--i: 2">
+                  <span>主题模式</span>
+                  <div class="settings-actions">
+                    <button class="modal-btn" :class="{ active: activeTheme === 'light' }" @click="setThemePreference('light')">浅色</button>
+                    <button class="modal-btn" :class="{ active: activeTheme === 'dark' }" @click="setThemePreference('dark')">深色</button>
+                    <button class="modal-btn" @click="followSystemThemeFromModal">跟随系统</button>
+                  </div>
+                </div>
+
+                <div class="settings-row dropdown-item" style="--i: 3">
+                  <span>本地数据</span>
+                  <div class="settings-actions">
+                    <button class="modal-btn danger" @click="clearLocalWorkspace">清空内容与任务</button>
+                    <button class="modal-btn danger" @click="logoutFromSettings">退出登录</button>
+                  </div>
+                </div>
+
+                <div class="settings-help dropdown-item" style="--i: 4">
+                  <p>发起新工作会回到首页并保留当前工作区。</p>
+                  <p>我的内容会展示最近生成的资产和进行中的任务。</p>
+                  <p>主题切换会立即应用并写入本地存储。</p>
+                </div>
+              </div>
+              <div class="modal-actions dropdown-item" style="--i: 5">
+                <button class="modal-btn" @click="closeSettingsModal">关闭</button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <Transition
+      :css="false"
+      @before-enter="onFadeBeforeEnter"
+      @enter="onFadeEnter"
+      @leave="onFadeLeave"
+    >
+      <div v-if="showLoginPromptModal" class="modal-mask" @click="closeLoginPromptModal">
+        <Transition
+          :css="false"
+          @before-enter="onModalBeforeEnter"
+          @enter="onModalEnter"
+          @leave="onModalLeave"
+        >
+          <div class="user-modal" @click.stop>
+            <h3>建议先登录</h3>
+            <p>新用户请先登录，登录后就可以保存作品、历史和偏好设置哦</p>
+            <div class="modal-actions">
+              <button class="modal-btn" @click="closeLoginPromptModal">稍后再说</button>
+              <button class="modal-btn" @click="goLoginFromPrompt">去登录</button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+
+    <Transition
+      :css="false"
+      @before-enter="onFadeBeforeEnter"
+      @enter="onFadeEnter"
+      @leave="onFadeLeave"
+    >
+      <div v-if="showDeleteArchiveModal" class="modal-mask" @click="closeDeleteArchiveModal">
+        <Transition
+          :css="false"
+          @before-enter="onModalBeforeEnter"
+          @enter="onModalEnter"
+          @leave="onModalLeave"
+        >
+          <div class="user-modal" @click.stop>
+            <h3>删除存档</h3>
+            <p>删除后将无法恢复，你确定要删除这个存档吗？</p>
+            <div class="modal-actions">
+              <button class="modal-btn" @click="closeDeleteArchiveModal">取消</button>
+              <button class="modal-btn danger" @click="confirmDeleteArchive">确认删除</button>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+  </div>
+</template>
+
+<script setup>
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { gsap } from 'gsap';
+import { useAuthStore } from '@/packages/auth/store/useAuthStore';
+import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
+import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
+import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
+import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
+
+import uSocialIcon from '../icons/uSocial.svg';
+import socialIcon from '../icons/Social.svg';
+import uMyIcon from '../icons/uMy.svg';
+import myIcon from '../icons/My.svg';
+import uShowIcon from '../icons/uShow.svg';
+import sendIcon from '../icons/send.svg';
+import deleteIcon from '../icons/delete.svg';
+
+const taskStore = useTaskStore();
+const authStore = useAuthStore();
+const route = useRoute();
+const router = useRouter();
+
+const bootstrapStores = async () => {
+  try {
+    await authStore.init();
+    await taskStore.init();
+    if (!isReloadNavigation()) {
+      taskStore.clearCurrentArchiveSelection();
+    }
+  } catch (error) {
+    console.warn('Failed to bootstrap stores:', error);
+  }
+};
+
+const isSidebarCollapsed = ref(false);
+const isModelDrawerOpen = ref(false);
+const showUserModal = ref(false);
+const showSettingsModal = ref(false);
+const showLoginPromptModal = ref(false);
+const showDeleteArchiveModal = ref(false);
+const pendingDeleteArchiveId = ref('');
+const appShellRef = ref(null);
+const sidebarRef = ref(null);
+const brandRef = ref(null);
+const avatarBtnRef = ref(null);
+const settingsBtnRef = ref(null);
+const userDropdownStyle = ref({});
+const settingsDropdownStyle = ref({});
+const activeTheme = ref('light');
+const deleteIconStyle = {
+  '--delete-icon': `url(${deleteIcon})`
+};
+
+const prefersReducedMotion = useReducedMotion();
+
+const THEME_PREF_KEY = 'ditapp_theme_pref';
+const FIRST_REQUEST_PROMPT_KEY = 'ditapp_first_request_login_prompted';
+const FORCE_WELCOME_ONCE_KEY = 'ditapp_force_welcome_once';
+const FORCE_WELCOME_BASELINE_KEY = 'ditapp_force_welcome_baseline';
+const HAS_SEEN_WELCOME_KEY = 'ditapp_has_seen_welcome';
+let colorSchemeMedia = null;
+let colorSchemeChangeHandler = null;
+
+const composerInputRef = ref(null);
+const promptText = ref('');
+const imageFile = ref(null);
+const imagePreview = ref('');
+
+const currentUser = computed(() => authStore.currentUser);
+const history = computed(() =>
+  taskStore.archiveSummaries.slice(0, 12).map((item) => ({
+    ...item,
+    canDelete: Boolean(
+      currentUser.value &&
+      (item.ownerId === currentUser.value.id || (!item.ownerId && !item.ownerName))
+    )
+  }))
+);
+const allowImageAttachment = computed(() => taskStore.currentArchiveMessages.length === 0);
+const hasModelDrawer = computed(
+  () => Boolean(taskStore.currentArchive && taskStore.currentArchive.modelAsset)
+);
+const leftPanelWidth = computed(() => (isSidebarCollapsed.value ? '78px' : '280px'));
+const rightPanelWidth = computed(() =>
+  hasModelDrawer.value && isModelDrawerOpen.value ? '70vw' : '0px'
+);
+const showWorkspaceControls = computed(() => !route.meta?.hideWorkspace);
+const showWorkspacePanels = computed(() => !route.meta?.hideWorkspace);
+const showComposerPanel = computed(() => showWorkspacePanels.value && !route.meta?.hideComposer);
+const isCommunityRoute = computed(() => route.path === '/community');
+const isHomeWelcomeState = computed(
+  () =>
+    route.path === '/' &&
+    taskStore.currentArchiveMessages.length === 0 &&
+    !promptText.value.trim() &&
+    !imageFile.value
+);
+const routeTitleMap = {
+  '/': '创作主页',
+  '/community': '发现社区',
+  '/my-content': '我的内容',
+  '/settings': '设置与帮助'
+};
+const pageTitle = computed(() => {
+  if (route.path.startsWith('/workshop/')) return '工作台';
+  return routeTitleMap[route.path] || 'ditapp';
+});
+const layoutVars = computed(() => ({
+  '--left-panel-width': leftPanelWidth.value,
+  '--right-panel-width': rightPanelWidth.value
+}));
+
+const isStandaloneRoute = computed(() => Boolean(route.meta && route.meta.standalone));
+const showBackBtn = computed(() => route.path !== '/' && !isCommunityRoute.value);
+const communityIcon = computed(() => (route.path.startsWith('/community') ? socialIcon : uSocialIcon));
+const profileIcon = computed(() => (currentUser.value ? myIcon : uMyIcon));
+
+const formatDate = (value) => {
+  if (!value) return '';
+  return new Date(value).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const resizeComposer = () => {
+  if (!composerInputRef.value) return;
+  composerInputRef.value.style.height = 'auto';
+  const nextHeight = Math.min(composerInputRef.value.scrollHeight, 200);
+  composerInputRef.value.style.height = `${nextHeight}px`;
+};
+
+const onComposerInput = () => {
+  resizeComposer();
+};
+
+const onPickFile = (event) => {
+  if (!allowImageAttachment.value) return;
+
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  imageFile.value = file;
+  imagePreview.value = URL.createObjectURL(file);
+};
+
+const clearImage = () => {
+  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  imageFile.value = null;
+  imagePreview.value = '';
+};
+
+const resolveSystemTheme = () => {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
+
+const applyTheme = (theme) => {
+  activeTheme.value = theme;
+  document.documentElement.setAttribute('data-theme', theme);
+};
+
+const syncThemeByAuthState = () => {
+  if (!currentUser.value) {
+    localStorage.removeItem(THEME_PREF_KEY);
+    applyTheme(resolveSystemTheme());
+    return;
+  }
+
+  const savedTheme = localStorage.getItem(THEME_PREF_KEY);
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    applyTheme(savedTheme);
+    return;
+  }
+
+  applyTheme(resolveSystemTheme());
+};
+
+const setThemePreference = (theme) => {
+  localStorage.setItem(THEME_PREF_KEY, theme);
+  applyTheme(theme);
+};
+
+const generateFromComposer = async () => {
+  const prompt = promptText.value.trim();
+  const sourceFile = allowImageAttachment.value ? imageFile.value : null;
+  if (!prompt && !sourceFile) return;
+
+  if (!currentUser.value && localStorage.getItem(FIRST_REQUEST_PROMPT_KEY) !== '1') {
+    localStorage.setItem(FIRST_REQUEST_PROMPT_KEY, '1');
+    showLoginPromptModal.value = true;
+    return;
+  }
+
+  let referenceImage = '';
+  try {
+    referenceImage = sourceFile ? await fileToDataUrl(sourceFile) : '';
+  } catch (error) {
+    console.warn('Failed to read composer image:', error);
+  }
+
+  const taskId = `task_${Date.now()}`;
+  taskStore.addTask({
+    id: taskId,
+    status: 'inferencing',
+    progress: 0,
+    prompt,
+    imageName: sourceFile ? sourceFile.name : '',
+    imagePreview: referenceImage,
+    createdAt: Date.now()
+  });
+
+  isModelDrawerOpen.value = true;
+  isSidebarCollapsed.value = true;
+
+  let progress = 0;
+  const interval = setInterval(() => {
+    progress += 10;
+    if (progress >= 100) {
+      clearInterval(interval);
+      taskStore.updateTask(taskId, { status: 'success', progress: 100 });
+      taskStore.addAssetRecord({
+        id: taskId,
+        prompt,
+        imagePreview: referenceImage,
+        createdAt: Date.now()
+      });
+      const event = new CustomEvent('cross-fade-trigger', {
+        detail: { id: taskId, prompt, hasImage: !!sourceFile }
+      });
+      window.dispatchEvent(event);
+    } else {
+      taskStore.updateTask(taskId, { progress });
+    }
+  }, 1000);
+
+  promptText.value = '';
+  clearImage();
+  nextTick(() => resizeComposer());
+};
+
+const logout = async () => {
+  await authStore.logout();
+  taskStore.resetForAuthChange();
+  isModelDrawerOpen.value = false;
+  showUserModal.value = false;
+};
+
+const clearLocalWorkspace = async () => {
+  await taskStore.resetWorkspace();
+  isModelDrawerOpen.value = false;
+};
+
+const openSettingsModal = () => {
+  showSettingsModal.value = true;
+};
+
+const closeSettingsModal = () => {
+  showSettingsModal.value = false;
+};
+
+const followSystemThemeFromModal = () => {
+  localStorage.removeItem(THEME_PREF_KEY);
+  applyTheme(resolveSystemTheme());
+};
+
+const logoutFromSettings = async () => {
+  await authStore.logout();
+  taskStore.resetForAuthChange();
+  isModelDrawerOpen.value = false;
+  closeSettingsModal();
+  router.push('/login');
+};
+
+const collapseModelPanels = () => {
+  isModelDrawerOpen.value = false;
+};
+
+const startNewWork = () => {
+  const baseline = 0;
+
+  taskStore.clearCurrentArchiveSelection();
+  isModelDrawerOpen.value = false;
+  isSidebarCollapsed.value = false;
+  sessionStorage.setItem(FORCE_WELCOME_ONCE_KEY, '1');
+  sessionStorage.setItem(FORCE_WELCOME_BASELINE_KEY, String(baseline));
+  router.push('/');
+};
+
+const toggleSidebar = () => {
+  if (isSidebarCollapsed.value && isModelDrawerOpen.value) {
+    isModelDrawerOpen.value = false;
+  }
+  isSidebarCollapsed.value = !isSidebarCollapsed.value;
+};
+
+const toggleModelDrawer = () => {
+  if (!hasModelDrawer.value) return;
+  const nextState = !isModelDrawerOpen.value;
+  isModelDrawerOpen.value = nextState;
+  if (nextState) {
+    isSidebarCollapsed.value = true;
+  }
+};
+
+const openModelFromHistory = (id) => {
+  if (!id) return;
+
+  taskStore.openArchive(id, { createIfMissing: true, title: `项目 ${id}` });
+  isModelDrawerOpen.value = false;
+  isSidebarCollapsed.value = false;
+  router.push({ path: '/', query: { archive: id } });
+};
+
+const goCommunity = () => {
+  router.push('/community');
+};
+
+const goHome = () => {
+  router.push('/');
+};
+
+const onAvatarClick = () => {
+  if (!currentUser.value) {
+    router.push('/login');
+    return;
+  }
+  showUserModal.value = true;
+};
+
+const closeUserModal = () => {
+  showUserModal.value = false;
+};
+
+const logoutFromModal = async () => {
+  await logout();
+};
+
+const closeLoginPromptModal = () => {
+  showLoginPromptModal.value = false;
+};
+
+const requestDeleteArchive = (archiveId) => {
+  pendingDeleteArchiveId.value = archiveId;
+  showDeleteArchiveModal.value = true;
+};
+
+const closeDeleteArchiveModal = () => {
+  showDeleteArchiveModal.value = false;
+  pendingDeleteArchiveId.value = '';
+};
+
+const confirmDeleteArchive = async () => {
+  if (!pendingDeleteArchiveId.value) return;
+  await taskStore.deleteArchive(pendingDeleteArchiveId.value);
+  closeDeleteArchiveModal();
+};
+
+const goLoginFromPrompt = () => {
+  showLoginPromptModal.value = false;
+  router.push('/login');
+};
+
+const toggleThemeManually = () => {
+  if (!currentUser.value) return;
+  const nextTheme = activeTheme.value === 'dark' ? 'light' : 'dark';
+  setThemePreference(nextTheme);
+};
+
+const handleThemePreferenceChange = (event) => {
+  const nextTheme = event?.detail?.theme;
+  if (nextTheme === 'dark' || nextTheme === 'light') {
+    applyTheme(nextTheme);
+  }
+};
+
+const isReloadNavigation = () => {
+  const entry = performance.getEntriesByType('navigation')[0];
+  if (entry && 'type' in entry) {
+    return entry.type === 'reload';
+  }
+
+  return performance?.navigation?.type === 1;
+};
+
+const runShellIntroAnimation = () => {
+  if (!sidebarRef.value || !brandRef.value || prefersReducedMotion.value) return;
+
+  gsap.fromTo(
+    sidebarRef.value,
+    { xPercent: -100, opacity: 0 },
+    { xPercent: 0, opacity: 1, duration: 0.65, ease: 'power3.out' }
+  );
+
+  const dot = brandRef.value.querySelector('.brand-dot');
+  const title = brandRef.value.querySelector('.brand-title');
+  const subtitle = brandRef.value.querySelector('.brand-subtitle');
+
+  const timeline = gsap.timeline({ delay: 0.45 });
+
+  if (dot) {
+    timeline.fromTo(
+      dot,
+      { opacity: 0, scale: 0.8, boxShadow: '0 0 0 0 rgba(58, 139, 255, 0.14)' },
+      {
+        opacity: 1,
+        scale: 1,
+        boxShadow: '0 0 0 5px rgba(58, 139, 255, 0.14)',
+        duration: 0.8,
+        ease: 'back.out(1.2)'
+      }
+    );
+  }
+
+  if (title) {
+    timeline.fromTo(
+      title,
+      { opacity: 0, x: -10 },
+      { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' },
+      '<0.1'
+    );
+  }
+
+  if (subtitle) {
+    timeline.fromTo(
+      subtitle,
+      { opacity: 0, y: 5 },
+      { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' },
+      '<0.1'
+    );
+  }
+};
+
+const onFadeBeforeEnter = (el) => {
+  el.style.opacity = '0';
+};
+
+const onFadeEnter = (el, done) => {
+  if (prefersReducedMotion.value) {
+    el.style.opacity = '1';
+    done();
+    return;
+  }
+
+  gsap.to(el, { opacity: 1, duration: 0.18, ease: 'power1.out', onComplete: done });
+};
+
+const onFadeLeave = (el, done) => {
+  if (prefersReducedMotion.value) {
+    done();
+    return;
+  }
+
+  gsap.to(el, { opacity: 0, duration: 0.18, ease: 'power1.in', onComplete: done });
+};
+
+const onComposerBeforeEnter = (el) => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(100%)';
+};
+
+const onComposerEnter = (el, done) => {
+  if (prefersReducedMotion.value) {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+    done();
+    return;
+  }
+
+  gsap.fromTo(
+    el,
+    { opacity: 0, yPercent: 100 },
+    { opacity: 1, yPercent: 0, duration: 0.56, ease: 'power3.out', onComplete: done }
+  );
+};
+
+const onComposerLeave = (el, done) => {
+  if (prefersReducedMotion.value) {
+    done();
+    return;
+  }
+
+  gsap.to(el, {
+    opacity: 0,
+    yPercent: 100,
+    duration: 0.46,
+    ease: 'power2.in',
+    onComplete: done
+  });
+};
+
+const onDropdownPanelBeforeEnter = (el) => {
+  el.style.opacity = '0';
+};
+
+const onDropdownPanelEnter = (el, done, panelType) => {
+  if (prefersReducedMotion.value) {
+    el.style.opacity = '1';
+    done();
+    return;
+  }
+
+  const enterFrom = panelType === 'settings'
+    ? { x: -16, y: 16 }
+    : { x: 16, y: -16 };
+
+  gsap.fromTo(
+    el,
+    { opacity: 0, x: enterFrom.x, y: enterFrom.y, scale: 0.985 },
+    {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      scale: 1,
+      duration: 0.32,
+      ease: 'power3.out',
+      onComplete: done
+    }
+  );
+
+  const itemFromX = panelType === 'settings' ? -14 : 14;
+  const items = el.querySelectorAll('.dropdown-item');
+  if (items.length) {
+    gsap.fromTo(
+      items,
+      { opacity: 0, x: itemFromX },
+      {
+        opacity: 1,
+        x: 0,
+        duration: 0.36,
+        ease: 'power3.out',
+        stagger: 0.056,
+        delay: 0.064
+      }
+    );
+  }
+};
+
+const onDropdownPanelLeave = (el, done) => {
+  if (prefersReducedMotion.value) {
+    done();
+    return;
+  }
+
+  gsap.to(el, {
+    opacity: 0,
+    scale: 0.985,
+    duration: 0.2,
+    ease: 'power2.in',
+    onComplete: done
+  });
+};
+
+const onModalBeforeEnter = (el) => {
+  el.style.opacity = '0';
+};
+
+const onModalEnter = (el, done) => {
+  if (prefersReducedMotion.value) {
+    el.style.opacity = '1';
+    done();
+    return;
+  }
+
+  gsap.fromTo(
+    el,
+    { opacity: 0, y: -18, scale: 0.98 },
+    { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: 'power3.out', onComplete: done }
+  );
+};
+
+const onModalLeave = (el, done) => {
+  if (prefersReducedMotion.value) {
+    done();
+    return;
+  }
+
+  gsap.to(el, {
+    opacity: 0,
+    y: -12,
+    scale: 0.98,
+    duration: 0.2,
+    ease: 'power2.in',
+    onComplete: done
+  });
+};
+
+const bootstrapFirstVisitWelcome = async () => {
+  if (route.meta?.standalone) return;
+  if (localStorage.getItem(HAS_SEEN_WELCOME_KEY) === '1') return;
+
+  const baseline = taskStore.currentArchiveMessages.length;
+
+  localStorage.setItem(HAS_SEEN_WELCOME_KEY, '1');
+  sessionStorage.setItem(FORCE_WELCOME_ONCE_KEY, '1');
+  sessionStorage.setItem(FORCE_WELCOME_BASELINE_KEY, String(baseline));
+
+  if (route.path !== '/') {
+    await router.replace('/');
+  }
+};
+
+const clamp = (value, min, max) => Math.max(min, Math.min(value, max));
+
+const computeDropdownStyle = (anchorEl, placement, width) => {
+  if (!anchorEl) return {};
+
+  const rect = anchorEl.getBoundingClientRect();
+  const gap = 10;
+  const edge = 10;
+  const safeWidth = Math.min(width, Math.max(260, window.innerWidth - edge * 2));
+
+  let left = edge;
+  let top = edge;
+  let transform = 'none';
+
+  if (placement === 'top-right') {
+    left = rect.right - safeWidth;
+    top = rect.bottom + gap;
+  }
+
+  if (placement === 'bottom-left') {
+    left = rect.left;
+    top = rect.top - gap;
+    transform = 'translateY(-100%)';
+  }
+
+  left = clamp(left, edge, window.innerWidth - safeWidth - edge);
+
+  return {
+    position: 'fixed',
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${safeWidth}px`,
+    transform
+  };
+};
+
+const refreshDropdownPositions = () => {
+  userDropdownStyle.value = computeDropdownStyle(avatarBtnRef.value, 'top-right', 300);
+  settingsDropdownStyle.value = computeDropdownStyle(settingsBtnRef.value, 'bottom-left', 560);
+};
+
+const syncArchiveFromRoute = async () => {
+  if (route.path.startsWith('/workshop/')) {
+    const id = String(route.params.id || '');
+    if (id) {
+      taskStore.openArchive(id, { createIfMissing: true, title: `项目 ${id}` });
+    }
+
+    isModelDrawerOpen.value = false;
+    isSidebarCollapsed.value = false;
+
+    await router.replace({ path: '/', query: id ? { archive: id } : route.query });
+    return;
+  }
+
+  if (route.path === '/' && route.query.archive) {
+    const archiveId = String(route.query.archive);
+    if (route.query.source === 'community') {
+      const nextArchiveId = await taskStore.openArchiveFromCommunity(archiveId);
+      if (nextArchiveId) {
+        await router.replace({ path: '/', query: { archive: nextArchiveId } });
+      }
+      return;
+    }
+
+    taskStore.openArchive(archiveId, { createIfMissing: true, title: `项目 ${archiveId}` });
+  }
+};
+
+onMounted(() => {
+  void bootstrapStores();
+  void bootstrapFirstVisitWelcome();
+  nextTick(runShellIntroAnimation);
+
+  colorSchemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+  syncThemeByAuthState();
+
+  colorSchemeChangeHandler = () => {
+    if (!currentUser.value) {
+      applyTheme(resolveSystemTheme());
+    }
+  };
+
+  colorSchemeMedia.addEventListener('change', colorSchemeChangeHandler);
+  window.addEventListener('ditapp-theme-change', handleThemePreferenceChange);
+  window.addEventListener('ditapp-open-settings-modal', openSettingsModal);
+  window.addEventListener('resize', refreshDropdownPositions);
+  window.addEventListener('scroll', refreshDropdownPositions, true);
+});
+
+onBeforeUnmount(() => {
+  if (colorSchemeMedia && colorSchemeChangeHandler) {
+    colorSchemeMedia.removeEventListener('change', colorSchemeChangeHandler);
+  }
+  window.removeEventListener('ditapp-theme-change', handleThemePreferenceChange);
+  window.removeEventListener('ditapp-open-settings-modal', openSettingsModal);
+  window.removeEventListener('resize', refreshDropdownPositions);
+  window.removeEventListener('scroll', refreshDropdownPositions, true);
+});
+
+watch(
+  () => [showUserModal.value, showSettingsModal.value],
+  async ([userOpen, settingsOpen]) => {
+    if (!userOpen && !settingsOpen) return;
+    await nextTick();
+    refreshDropdownPositions();
+  }
+);
+
+watch(
+  () => route.fullPath,
+  () => {
+    void syncArchiveFromRoute();
+  },
+  { immediate: true }
+);
+
+watch(
+  () => allowImageAttachment.value,
+  (value) => {
+    if (!value && imageFile.value) {
+      clearImage();
+    }
+  }
+);
+
+watch(
+  () => currentUser.value?.id || '',
+  async (nextUserId, prevUserId) => {
+    syncThemeByAuthState();
+
+    if (nextUserId === prevUserId) return;
+
+    taskStore.resetForAuthChange();
+    if (nextUserId) {
+      await taskStore.init();
+    } else {
+      isModelDrawerOpen.value = false;
+    }
+  }
+);
+
+nextTick(() => resizeComposer());
+</script>
+
+<style scoped>
+.app-shell {
+  --left-panel-width: 280px;
+  --right-panel-width: 0px;
+  --panel-gap: 16px;
+  --drawer-top-offset: 84px;
+  --drawer-edge-gap: 16px;
+  --composer-width: min(900px, calc(100vw - var(--left-panel-width) - var(--right-panel-width) - 26px));
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+  background: radial-gradient(circle at 20% 10%, #f0f5ff 0%, #f6f8fb 35%, #f2f3f7 100%);
+  color: #1b2430;
+  transition: --right-panel-width 0.24s ease;
+}
+
+.app-shell.theme-dark {
+  background: #0d1420;
+  color: #e6edf6;
+}
+
+.sidebar {
+  width: 280px;
+  min-width: 280px;
+  height: 100vh;
+  border-right: 1px solid #d9e0ec;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 20px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 18px;
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.65s ease, width 0.24s ease, min-width 0.24s ease, padding 0.24s ease;
+}
+
+.app-shell.theme-dark .sidebar {
+  border-right-color: #2a2a2a;
+  background: rgba(14, 14, 14, 0.92);
+}
+
+.app-shell.theme-dark .brand-dot {
+  background: #e6edf6;
+  box-shadow: 0 0 0 5px rgba(230, 237, 246, 0.12);
+}
+
+.app-shell.theme-dark .brand-title {
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .collapse-btn {
+  border-color: #334055;
+  background: #2a2a2a;
+}
+
+.sidebar.collapsed {
+  width: 78px;
+  min-width: 78px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: 14px;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.sidebar-action {
+  text-decoration: none;
+  color: #e8eef6;
+  background: #202632;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  box-sizing: border-box;
+}
+
+.sidebar-action:hover,
+.sidebar-action.active {
+  background: #2c3442;
+}
+
+.sidebar-action.primary {
+  background: #eef3f8;
+  color: #1f2a37;
+}
+
+.sidebar-action.primary:hover,
+.sidebar-action.primary.active {
+  background: #f5f8fc;
+}
+
+.sidebar-action.footer-action {
+  width: 100%;
+}
+
+.action-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.plus-icon::before,
+.plus-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.plus-icon::after {
+  width: 2px;
+  height: 12px;
+}
+
+.content-icon {
+  border-radius: 4px;
+  border: 2px solid currentColor;
+}
+
+.content-icon::before,
+.content-icon::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.content-icon::before {
+  top: 4px;
+}
+
+.content-icon::after {
+  bottom: 4px;
+}
+
+.settings-icon {
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.settings-icon::before,
+.settings-icon::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 8px;
+}
+
+.brand {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  text-align: left;
+}
+
+.brand-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(120deg, #3a8bff, #77b2ff);
+  box-shadow: 0 0 0 0 rgba(58, 139, 255, 0.14);
+}
+
+.brand-text {
+  display: inline-flex;
+  flex-direction: column;
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.brand-subtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.collapse-btn {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  height: 32px;
+  min-width: 38px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapse-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+.hamburger-icon {
+  stroke: #475569;
+  transition: stroke 0.2s ease;
+}
+
+.app-shell.theme-dark .hamburger-icon {
+  stroke: #b3b3b3;
+}
+
+.app-shell.theme-dark .hamburger-icon:hover {
+  stroke: #dbe4ef;
+}
+
+.sidebar.collapsed .collapse-icon {
+  transform: rotate(180deg);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  flex: 0 0 auto;
+  padding-top: 8px;
+}
+
+.menu {
+  display: grid;
+  gap: 8px;
+}
+
+.menu-item {
+  text-decoration: none;
+  color: #1f2937;
+  background: #eef3fc;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-item.router-link-exact-active {
+  background: #dbe9ff;
+  color: #0f3f8a;
+}
+
+.app-shell.theme-dark .menu-item {
+  color: #e6edf6;
+  background: #19202b;
+  border-color: #2f3b4f;
+}
+
+.app-shell.theme-dark .menu-item.router-link-exact-active {
+  background: #243041;
+  border-color: #4a5a73;
+  color: #edf4fb;
+}
+
+.menu-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.history-block {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.history-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 10px;
+}
+
+.history-item {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+  background: #f8fbff;
+  border-radius: 999px;
+  padding: 6px 8px;
+}
+
+.history-open {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 4px 2px;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.history-open-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.history-delete {
+  margin-bottom: 0;
+  width: 20px;
+  flex: 0 0 20px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.18s ease;
+}
+
+.history-delete:hover {
+  color: var(--color-danger);
+}
+
+.history-delete-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+  object-fit: contain;
+  background-color: currentColor;
+  -webkit-mask: var(--delete-icon) no-repeat center / contain;
+  mask: var(--delete-icon) no-repeat center / contain;
+}
+
+
+.app-shell.theme-dark .history-open {
+  background: transparent;
+}
+
+.app-shell.theme-dark .history-delete {
+  background: transparent;
+}
+
+.app-shell.theme-dark .history-item {
+  background: #19202b;
+}
+
+.app-shell.theme-dark .history-delete-icon {
+  background-color: currentColor;
+}
+
+.app-shell.theme-dark .history-main {
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .history-meta,
+.app-shell.theme-dark .history-title,
+.app-shell.theme-dark .history-empty,
+.app-shell.theme-dark .brand-subtitle {
+  color: #aeb9c7;
+}
+
+.history-main {
+  color: #1f2937;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-meta {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+  height: 100vh;
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 68px;
+  padding-bottom: 132px;
+  box-sizing: border-box;
+  padding-right: calc(var(--right-panel-width) + var(--panel-gap));
+  transition: padding-right 0.24s ease;
+}
+
+.content.workspace-hidden {
+  padding-bottom: 0;
+}
+
+.content.welcome-locked {
+  overflow: hidden;
+}
+
+.topbar {
+  position: fixed;
+  top: 0;
+  left: var(--left-panel-width);
+  right: 0;
+  width: auto;
+  z-index: 45;
+  height: 68px;
+  padding: 0 16px;
+  box-sizing: border-box;
+  background: rgba(246, 248, 252, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(210, 221, 237, 0.9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
+  flex-shrink: 0;
+}
+
+.title-block {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.title-sub {
+  margin: 0;
+  font-size: 11px;
+  color: #5f6f85;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title-main {
+  margin: 2px 0 0;
+  font-size: 18px;
+  line-height: 1.15;
+  color: #12253f;
+  white-space: nowrap;
+}
+
+.app-shell.theme-dark .topbar {
+  background: rgba(13, 18, 28, 0.88);
+  border-bottom-color: rgba(48, 60, 78, 0.95);
+}
+
+.app-shell.theme-dark .widget-btn,
+.app-shell.theme-dark .avatar-btn {
+  background: rgba(20, 26, 36, 0.95);
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .title-sub {
+  color: #a3b2c6;
+}
+
+.app-shell.theme-dark .title-main {
+  color: #eef4fb;
+}
+
+.top-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.widget-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid #d6e0ef;
+  background: rgba(255, 255, 255, 0.96);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+.widget-btn:hover {
+  border-color: #c2d2ea;
+  transform: translateY(-1px);
+}
+
+.widget-icon {
+  width: 18px;
+  height: 18px;
+  filter: none;
+}
+
+.avatar-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #d6e0ef;
+  background: rgba(255, 255, 255, 0.94);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+}
+
+.avatar-btn:hover {
+  border-color: #c2d2ea;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.avatar-icon {
+  width: 20px;
+  height: 20px;
+  filter: none;
+}
+
+.model-drawer {
+  position: absolute;
+  top: var(--drawer-top-offset);
+  right: var(--drawer-edge-gap);
+  width: calc(var(--right-panel-width) - var(--drawer-edge-gap));
+  background: rgba(255, 255, 255, 0.96);
+  z-index: 24;
+  box-shadow: 0 10px 40px rgba(15, 23, 42, 0.1);
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #d9e0ec;
+  height: calc(100vh - var(--drawer-top-offset) - var(--drawer-edge-gap));
+  transition: width 0.24s ease;
+}
+
+.app-shell.theme-dark .model-drawer {
+  background: rgba(18, 24, 34, 0.97);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  border-color: #2f3b4f;
+}
+
+.app-shell.theme-dark .model-drawer-head {
+  border-bottom-color: #2f3b4f;
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .drawer-close {
+  border-color: #334055;
+  background: #1a2230;
+  color: #e6edf6;
+}
+
+.model-drawer-head {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #d9e0ec;
+  font-size: 13px;
+  color: #1f2937;
+}
+
+.drawer-close {
+  border: none;
+  background: #f8fbff;
+  color: #103f8a;
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.model-drawer-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.bottom-composer-wrap {
+  position: fixed;
+  left: var(--left-panel-width, 280px);
+  right: calc(var(--right-panel-width, 0px) + var(--panel-gap, 16px));
+  bottom: 0;
+  z-index: 40;
+  padding: 12px 0;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: right 0.24s ease;
+  display: flex;
+  justify-content: center;
+}
+
+.bottom-composer {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  border: 1px solid #d7e2f5;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.16);
+  padding: 10px;
+  pointer-events: auto;
+}
+
+.app-shell :deep(.home-wrap) {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+.content.welcome-locked :deep(.home-wrap) {
+  min-height: calc(100dvh - 132px);
+  height: calc(100dvh - 132px);
+  overflow: hidden;
+}
+
+.app-shell :deep(.welcome-card),
+.app-shell :deep(.shortcut-row) {
+  width: 100%;
+  max-width: 900px;
+}
+
+.app-shell.theme-dark .bottom-composer {
+  border-color: #2f3b4f;
+  background: rgba(13, 18, 28, 0.94);
+}
+
+.app-shell.theme-dark .composer-input {
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .composer-input::placeholder {
+  color: #9dadc0;
+}
+
+.app-shell.theme-dark .tool-btn {
+  border-color: #334055;
+  background: #1a2230;
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark .tool-btn.ghost {
+  background: #121824;
+  color: #d6deea;
+}
+
+.app-shell.theme-dark .file-tag {
+  color: #aeb9c7;
+}
+
+.app-shell.theme-dark .send-btn {
+  background: #d9e2ee;
+  color: #101826;
+}
+
+.composer-input {
+  width: 100%;
+  border: none;
+  resize: none;
+  background: transparent;
+  font-size: 14px;
+  line-height: 1.5;
+  max-height: 200px;
+  outline: none;
+  padding: 2px 4px;
+  box-sizing: border-box;
+}
+
+.composer-tools {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#app-image-upload {
+  display: none;
+}
+
+.tool-btn {
+  border: none;
+  border-radius: 8px;
+  background: #eff5ff;
+  color: #13418d;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tool-btn.ghost {
+  background: #f8fafc;
+  color: #334155;
+}
+
+.file-tag {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.send-btn {
+  margin-left: auto;
+  border: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #d9e2ee;
+  color: #101826;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.send-icon {
+  width: 18px;
+  height: 18px;
+  filter: brightness(0) invert(1);
+  transition: filter 0.2s;
+  transform: translateX(-1px);
+}
+
+.app-shell.theme-dark .send-icon {
+  filter: brightness(0);
+}
+
+.dropdown-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: transparent;
+}
+
+.dropdown-panel {
+  max-height: min(72vh, 680px);
+  overflow: auto;
+}
+
+.dropdown-item {
+  will-change: transform, opacity;
+}
+
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg-overlay);
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 64px 14px 14px;
+  box-sizing: border-box;
+}
+
+.user-modal {
+  width: 280px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-elevated);
+  padding: 14px;
+  transform-origin: top right;
+  color: var(--color-text-primary);
+}
+
+.settings-modal {
+  width: min(560px, calc(100vw - 28px));
+}
+
+.settings-group {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.settings-row {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-row > span {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  font-weight: 700;
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.settings-help {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+}
+
+.settings-help p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.theme-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 10px 0;
+  font-size: 13px;
+}
+
+.app-shell.theme-dark :deep(.home-wrap),
+.app-shell.theme-dark :deep(.discovery-hall) {
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark :deep(.badge),
+.app-shell.theme-dark :deep(.shortcut) {
+  color: #e6edf6;
+  background: #19202b;
+  border-color: #2f3b4f;
+}
+
+.app-shell.theme-dark :deep(.desc),
+.app-shell.theme-dark :deep(.shortcut.hint),
+.app-shell.theme-dark :deep(.community-header p),
+.app-shell.theme-dark :deep(.title-eyebrow) {
+  color: #aeb9c7;
+}
+
+.app-shell.theme-dark :deep(.title-eyebrow) {
+  background: #19202b;
+}
+
+.app-shell.theme-dark :deep(.asset-card) {
+  background: #111823;
+  border-color: #2f3b4f;
+  color: #e6edf6;
+}
+
+.app-shell.theme-dark :deep(.tag),
+.app-shell.theme-dark :deep(.remix-badge) {
+  background: #1f2733;
+  color: #e6edf6;
+}
+
+.user-modal h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.user-modal p {
+  margin: 6px 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.user-modal strong {
+  color: var(--color-text-primary);
+}
+
+.modal-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.modal-btn {
+  flex: 1;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-soft);
+  color: var(--color-text-primary);
+  border-radius: 8px;
+  padding: 7px 8px;
+  cursor: pointer;
+}
+
+.modal-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+.modal-btn.danger {
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--color-danger) 34%, var(--color-border));
+  color: var(--color-danger);
+}
+
+
+.collapse-icon,
+.menu-icon,
+.menu-icon {
+  filter: brightness(0) invert(1);
+}
+
+@media (max-width: 920px) {
+  .app-shell {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+    --left-panel-width: 0px !important;
+    --right-panel-width: 0px !important;
+    --composer-width: calc(100vw - 18px);
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #d9e0ec;
+    max-height: 48vh;
+  }
+
+  .content {
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    padding-top: 60px;
+    padding-bottom: 150px;
+  }
+
+  .content.welcome-locked {
+    overflow: hidden;
+  }
+
+  .content.welcome-locked :deep(.home-wrap) {
+    min-height: calc(100dvh - 150px);
+    height: calc(100dvh - 150px);
+  }
+
+  .topbar {
+    left: 0;
+    right: 0;
+    height: 60px;
+    padding: 0 10px;
+  }
+
+  .title-sub {
+    font-size: 10px;
+  }
+
+  .title-main {
+    font-size: 15px;
+  }
+
+  .model-drawer {
+    width: 100%;
+  }
+
+  .bottom-composer {
+    max-width: var(--composer-width);
+    transform: none;
+  }
+
+  .app-shell :deep(.welcome-card),
+  .app-shell :deep(.shortcut-row) {
+    max-width: var(--composer-width);
+    transform: none;
+  }
+}
+</style>

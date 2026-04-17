@@ -1,0 +1,25 @@
+{
+  "name": "ditapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "mock:server": "node mock-server/server.js",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tweenjs/tween.js": "^25.0.0",
+    "gsap": "^3.15.0",
+    "pinia": "^3.0.4",
+    "three": "^0.183.2",
+    "vue": "^3.5.32",
+    "vue-router": "^4.4.5",
+    "vue3-lottie": "^3.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "vite": "^5.4.21"
+  }
+}

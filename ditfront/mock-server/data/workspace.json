@@ -1,0 +1,28 @@
+{
+  "workspaces": {
+    "user_default_001": {
+      "version": 2,
+      "activeArchiveId": "archive_1776384631420",
+      "archiveOrder": [
+        "archive_1776384631420"
+      ],
+      "archives": {
+        "archive_1776384631420": {
+          "id": "archive_1776384631420",
+          "title": "新工作",
+          "ownerId": "",
+          "ownerName": "",
+          "tasks": [],
+          "messages": [],
+          "modelAsset": null,
+          "sourceCommunityId": "",
+          "isPrivate": true,
+          "remixCount": 0,
+          "status": "idle",
+          "createdAt": 1776384631420,
+          "updatedAt": 1776384631420
+        }
+      }
+    }
+  }
+}

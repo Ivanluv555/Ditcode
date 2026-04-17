@@ -1,0 +1,148 @@
+/* reset */
+body, html {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  font-family: "Noto Sans", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--color-bg-page);
+  color: var(--color-text-primary);
+  overflow-x: hidden;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+#app {
+  min-height: 100%;
+}
+
+:root {
+  --color-bg-page: #f2f4f8;
+  --color-bg-elevated: #ffffff;
+  --color-bg-card: rgba(255, 255, 255, 0.9);
+  --color-bg-soft: #f4f7fc;
+  --color-bg-soft-strong: #eef3fc;
+  --color-bg-overlay: rgba(15, 23, 42, 0.32);
+
+  --color-text-primary: #1b2430;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #eef4fb;
+
+  --color-border: #d7e2f5;
+  --color-border-strong: #c2d2ea;
+
+  --color-primary: #1d4a97;
+  --color-primary-soft: #e0edff;
+  --color-primary-contrast: #eef4fb;
+
+  --color-success: #00ffaa;
+  --color-warning: #f59e0b;
+  --color-danger: #b91c1c;
+
+  --shadow-card: 0 14px 30px rgba(15, 23, 42, 0.08);
+  --shadow-elevated: 0 20px 40px rgba(15, 23, 42, 0.16);
+
+  --auth-page-bg:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(56, 189, 248, 0.12), transparent 26%),
+    radial-gradient(circle at 50% 110%, rgba(14, 165, 233, 0.1), transparent 28%),
+    linear-gradient(140deg, #f4f8ff 0%, #eef4ff 52%, #f8fbff 100%);
+  --auth-topbar-bg: linear-gradient(to right, rgba(248, 251, 255, 0.95), rgba(240, 246, 255, 0.9));
+  --auth-topbar-border: rgba(29, 78, 216, 0.1);
+  --auth-brand-text: #0f172a;
+  --auth-brand-square: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  --auth-brand-square-ring: #dbeafe;
+  --auth-card-bg: rgba(255, 255, 255, 0.92);
+  --auth-card-border: rgba(147, 197, 253, 0.35);
+  --auth-card-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+  --auth-card-text: #0f172a;
+  --auth-card-subtle: #475569;
+  --auth-input-bg: #f8fbff;
+  --auth-input-border: #cbdcf6;
+  --auth-input-placeholder: #7c8ea8;
+  --auth-btn-bg: linear-gradient(120deg, #2d74f6, #4b9dff);
+  --auth-btn-border: rgba(59, 130, 246, 0.5);
+  --auth-btn-text: #eef4fb;
+  --auth-link: #1d4a97;
+
+  --scrollbar-size: 6px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+}
+
+:root[data-theme="dark"] {
+  --color-bg-page: #0d1420;
+  --color-bg-elevated: #111823;
+  --color-bg-card: rgba(17, 24, 35, 0.94);
+  --color-bg-soft: #19202b;
+  --color-bg-soft-strong: #1f2733;
+  --color-bg-overlay: rgba(0, 0, 0, 0.58);
+
+  --color-text-primary: #e6edf6;
+  --color-text-secondary: #c9d2df;
+  --color-text-muted: #aeb9c7;
+  --color-text-inverse: #101826;
+
+  --color-border: #2f3b4f;
+  --color-border-strong: #334055;
+
+  --color-primary: #93c5fd;
+  --color-primary-soft: #1f2733;
+  --color-primary-contrast: #e6edf6;
+
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+
+  --shadow-card: 0 14px 30px rgba(0, 0, 0, 0.28);
+  --shadow-elevated: 0 20px 40px rgba(0, 0, 0, 0.35);
+
+  --auth-page-bg:
+    radial-gradient(circle at top left, rgba(230, 238, 247, 0.08), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(230, 238, 247, 0.06), transparent 26%),
+    radial-gradient(circle at 50% 110%, rgba(230, 238, 247, 0.05), transparent 28%),
+    linear-gradient(140deg, #08101b 0%, #111b2a 48%, #08101a 100%);
+  --auth-topbar-bg: linear-gradient(to right, rgba(18, 26, 39, 0.88), rgba(11, 16, 24, 0.78));
+  --auth-topbar-border: rgba(230, 238, 247, 0.06);
+  --auth-brand-text: #edf3fa;
+  --auth-brand-square: linear-gradient(135deg, #e6edf6 0%, #8ea0b8 100%);
+  --auth-brand-square-ring: #0c1220;
+  --auth-card-bg: rgba(22, 28, 39, 0.94);
+  --auth-card-border: rgba(230, 238, 247, 0.1);
+  --auth-card-shadow: 0 20px 40px rgba(0, 0, 0, 0.42);
+  --auth-card-text: #edf3fa;
+  --auth-card-subtle: #b6c3d4;
+  --auth-input-bg: rgba(230, 238, 247, 0.08);
+  --auth-input-border: rgba(230, 238, 247, 0.16);
+  --auth-input-placeholder: #9aa8b9;
+  --auth-btn-bg: rgba(52, 68, 90, 0.92);
+  --auth-btn-border: rgba(230, 238, 247, 0.2);
+  --auth-btn-text: #eef4fb;
+  --auth-link: #edf3fa;
+
+  --scrollbar-thumb: rgba(230, 238, 247, 0.16);
+  --scrollbar-thumb-hover: rgba(230, 238, 247, 0.28);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+

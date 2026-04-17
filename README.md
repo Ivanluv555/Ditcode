@@ -1,4 +1,18 @@
-# ditcode
+<h1 align='center' style='font-size: 40px'>
+  <a href="https://gitee.com/HanPulin/ditcode" style="text-decoration: none; color: grey;">Ditcode</a>
+</h1>
+
+<div align='center'>
+  <img src="https://img.shields.io/badge/License-Apache2.0-green">
+  <img src="https://img.shields.io/badge/Version-0.1-blue">
+  <img src="https://img.shields.io/badge/写-red">
+</div>
+<div align='center'>
+  <img src="https://img.shields.io/badge/Member-AAA-gold">
+  <img src="https://img.shields.io/badge/Member-BBB-aqua">
+  <img src="https://img.shields.io/badge/Member-CCC-aqua">
+  <img src="https://img.shields.io/badge/Member-DDD-aqua">
+</div>
 
 #### 介绍
 26计设使用仓库
