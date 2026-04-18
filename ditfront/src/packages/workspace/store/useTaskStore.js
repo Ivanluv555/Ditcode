@@ -25,6 +25,15 @@ const requestCommunityApi = (path, options = {}) =>
     }
   });
 
+const requestModelApi = (path, options = {}) =>
+  apiRequest(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(readToken() ? { Authorization: `Bearer ${readToken()}` } : {})
+    }
+  });
+
 const normalizeTask = (task) => ({
   id: task.id || `task_${Date.now()}`,
   status: task.status || 'queued',
@@ -548,6 +557,55 @@ export const useTaskStore = defineStore('task', {
           .catch((error) => {
             console.warn('Community remix count update failed:', error);
           });
+      }
+    },
+    async generateModelAsset({ prompt, imageName = '', imagePreview = '' }) {
+      const normalizedPrompt = (prompt || '').trim();
+      if (!normalizedPrompt) {
+        return { ok: false, message: 'prompt is required' };
+      }
+
+      if (!this.currentArchive) {
+        this.createArchive({ title: '新工作' });
+      }
+
+      const archiveId = this.currentArchive?.id || '';
+      const taskId = `task_${Date.now()}`;
+      this.addTask({
+        id: taskId,
+        status: 'inferencing',
+        progress: 5,
+        prompt: normalizedPrompt,
+        imageName,
+        imagePreview,
+        createdAt: Date.now()
+      });
+
+      try {
+        const result = await requestModelApi('/api/model/generate', {
+          method: 'POST',
+          body: JSON.stringify({
+            taskId,
+            archiveId,
+            prompt: normalizedPrompt,
+            imageName,
+            imagePreview
+          })
+        });
+
+        const finalPreview = result.imagePreview || imagePreview || '';
+        this.updateTask(taskId, { status: 'success', progress: 100, updatedAt: Date.now() });
+        this.addAssetRecord({
+          id: taskId,
+          prompt: normalizedPrompt,
+          imagePreview: finalPreview,
+          createdAt: result.finishedAt || Date.now(),
+          updatedAt: result.finishedAt || Date.now()
+        });
+        return { ok: true, taskId, imagePreview: finalPreview };
+      } catch (error) {
+        this.updateTask(taskId, { status: 'failed', progress: 100, updatedAt: Date.now() });
+        return { ok: false, message: error.message || '模型生成失败', taskId };
       }
     }
   }

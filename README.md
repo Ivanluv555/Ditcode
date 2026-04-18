@@ -28,6 +28,8 @@
 
 后端接口与运行说明见：`ditdocs/SpringBoot后端说明.md`
 
+项目全量文档导航见：`ditdocs/00-文档导航.md`
+
 
 #### 安装教程
 

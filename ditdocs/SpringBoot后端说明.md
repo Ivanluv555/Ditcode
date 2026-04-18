@@ -7,6 +7,7 @@
 - 认证：`/api/auth/*`
 - 工作区：`/api/workspace*`
 - 社区：`/api/community*`
+- 模型网关：`/api/model/generate`
 - 健康检查：`/api/health`
 
 后端采用关系型建模（JPA）拆分聚合：
@@ -20,6 +21,11 @@
 - `remix_events`
 
 与 `ditdbase/数据库设计.md` 的 v1 模型保持一致，业务约束（权限、首轮图片、发布/取消发布、remix 计数）在服务层执行。
+
+资源职责约定：
+
+- 前端图标统一由 Iconify 渲染；
+- 后端仅返回业务数据与动态资源地址，不管理前端 icon/静态视觉素材。
 
 ## 2. 接口契约（与前端一致）
 
@@ -57,6 +63,19 @@
 - `POST /api/community/publish`（Bearer Token）
 - `POST /api/community/unpublish`（Bearer Token）
 - `POST /api/community/remix`（Bearer Token）
+
+### 模型网关
+
+- `POST /api/model/generate`
+
+可选上游配置：
+
+- `MODEL_UPSTREAM_URL`
+- `MODEL_API_KEY`
+- `MODEL_CONNECT_TIMEOUT_MS`
+- `MODEL_READ_TIMEOUT_MS`
+
+未配置 `MODEL_UPSTREAM_URL` 时，后端会返回 fallback 动态资源 URL，确保前端链路可用。
 
 ## 3. 安全与认证
 

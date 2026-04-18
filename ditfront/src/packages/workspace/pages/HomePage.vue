@@ -36,7 +36,7 @@
           </div>
           <div v-if="loadingTaskExists" class="bubble-item bubble-item-loading">
             <div class="bubble loading">
-              <img src="/assets/animations/loading-spinner.svg" class="bubble-loading-icon" alt="loading" />
+              <Icon icon="solar:refresh-circle-outline" class="bubble-loading-icon" />
               <span>正在生成中...</span>
             </div>
           </div>
@@ -50,6 +50,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue';
 import { Vue3Lottie } from 'vue3-lottie';
 import { gsap } from 'gsap';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
@@ -380,7 +381,10 @@ h2 {
   height: 14px;
   display: block;
   color: currentColor;
+  animation: spin 1.2s linear infinite;
 }
+
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .bubble-author {
   font-size: 12px;

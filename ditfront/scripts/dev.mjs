@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
 
 const isWindows = process.platform === 'win32';
-const mockPort = Number(process.env.MOCK_PORT || 3100);
-const mockHealthUrl = `http://127.0.0.1:${mockPort}/api/health`;
+const backendPort = Number(process.env.BACKEND_PORT || 3100);
+const healthUrl = `http://127.0.0.1:${backendPort}/api/health`;
+const useMockServer = String(process.env.USE_MOCK_SERVER || 'false').toLowerCase() === 'true';
 const spawnOptions = {
   stdio: 'inherit',
   shell: isWindows,
@@ -10,15 +11,15 @@ const spawnOptions = {
 };
 
 let shuttingDown = false;
-let mockServer = null;
+let backendLikeServer = null;
 let viteServer = null;
-let usingExternalMockServer = false;
+let usingExternalServer = false;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const isMockHealthy = async () => {
   try {
-    const response = await fetch(mockHealthUrl);
+    const response = await fetch(healthUrl);
     return response.ok;
   } catch {
     return false;
@@ -41,7 +42,7 @@ const shutdown = (code = 0) => {
   if (shuttingDown) return;
   shuttingDown = true;
 
-  for (const child of [mockServer, viteServer]) {
+  for (const child of [backendLikeServer, viteServer]) {
     if (child && !child.killed) {
       child.kill('SIGTERM');
     }
@@ -53,7 +54,7 @@ const shutdown = (code = 0) => {
 const handleChildExit = (label, code) => {
   console.log(`[dev] ${label} exited with code ${code ?? 0}`);
 
-  if (label === 'mock-server' && usingExternalMockServer) {
+  if (label === 'backend-like-server' && usingExternalServer) {
     return;
   }
 
@@ -61,19 +62,24 @@ const handleChildExit = (label, code) => {
 };
 
 if (await isMockHealthy()) {
-  usingExternalMockServer = true;
-  console.log(`[dev] using existing mock-server on ${mockHealthUrl}`);
-} else {
-  mockServer = spawn('pnpm', ['mock:server'], spawnOptions);
-  mockServer.on('exit', (code) => handleChildExit('mock-server', code));
-  mockServer.on('error', (error) => {
+  usingExternalServer = true;
+  console.log(`[dev] using existing backend on ${healthUrl}`);
+} else if (useMockServer) {
+  backendLikeServer = spawn('pnpm', ['mock:server'], spawnOptions);
+  backendLikeServer.on('exit', (code) => handleChildExit('backend-like-server', code));
+  backendLikeServer.on('error', (error) => {
     console.error('[dev] mock-server process error:', error.message);
     shutdown(1);
   });
+  console.log(`[dev] backend not found, started mock-server on ${healthUrl}`);
+} else {
+  console.log(`[dev] backend not found on ${healthUrl}. Start ditserver first, or run with USE_MOCK_SERVER=true.`);
 }
 
 try {
-  await waitForHealth();
+  if (useMockServer || usingExternalServer) {
+    await waitForHealth();
+  }
   viteServer = spawn('pnpm', ['exec', 'vite', '--host'], spawnOptions);
   viteServer.on('exit', (code) => handleChildExit('vite', code));
   viteServer.on('error', (error) => {

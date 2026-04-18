@@ -1,10 +1,8 @@
 <template>
   <div class="task-pod" :class="{ 'expanded': isExpanded }" @mouseenter="isExpanded = true" @mouseleave="isExpanded = false">
     <div class="pod-icon">
-      <svg v-if="tasks.length > 0" class="spinner" viewBox="0 0 50 50">
-        <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
-      </svg>
-      <span v-else class="check">✓</span>
+      <Icon v-if="tasks.length > 0" icon="solar:refresh-circle-outline" class="spinner" />
+      <Icon v-else icon="solar:check-circle-bold" class="check" />
     </div>
     <div class="task-list" v-if="isExpanded">
       <div v-if="tasks.length === 0" class="empty">No active tasks</div>
@@ -18,6 +16,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { Icon } from '@iconify/vue';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 
 const taskStore = useTaskStore();
@@ -62,20 +61,12 @@ const isExpanded = ref(false);
 }
 .spinner {
   animation: rotate 2s linear infinite;
-  width: 24px; height: 24px;
-}
-.spinner .path {
-  stroke: var(--color-success);
-  stroke-linecap: round;
-  animation: dash 1.5s ease-in-out infinite;
+  width: 24px;
+  height: 24px;
+  color: var(--color-success);
 }
 @keyframes rotate { 100% { transform: rotate(360deg); } }
-@keyframes dash {
-  0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
-  50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
-  100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
-}
-.check { color: var(--color-success); font-weight: bold; }
+.check { color: var(--color-success); width: 22px; height: 22px; }
 .task-list {
   padding: 12px; width: 100%; box-sizing: border-box;
 }
@@ -85,4 +76,3 @@ const isExpanded = ref(false);
 }
 .empty { font-size: 12px; opacity: 0.6; text-align: center; }
 </style>
-

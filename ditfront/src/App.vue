@@ -11,11 +11,7 @@
     <aside ref="sidebarRef" class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
       <div class="sidebar-top">
         <button class="collapse-btn" @click="toggleSidebar" style="background: transparent; box-shadow: none; border: none; padding: 4px; cursor: pointer;">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="hamburger-icon">
-            <line x1="3" y1="12" x2="21" y2="12"></line>
-            <line x1="3" y1="6" x2="21" y2="6"></line>
-            <line x1="3" y1="18" x2="21" y2="18"></line>
-          </svg>
+          <Icon icon="lucide:menu" class="hamburger-icon" />
         </button>
       </div>
 
@@ -27,7 +23,7 @@
             :class="{ active: route.path === '/' }"
             @click="startNewWork"
           >
-            <span class="action-icon plus-icon" aria-hidden="true"></span>
+            <Icon icon="solar:add-circle-outline" class="action-icon" aria-hidden="true" />
             <span>发起新工作</span>
           </RouterLink>
 
@@ -37,7 +33,7 @@
             :class="{ active: route.path.startsWith('/my-content') }"
             @click="collapseModelPanels"
           >
-            <span class="action-icon content-icon" aria-hidden="true"></span>
+            <Icon icon="solar:folder-with-files-outline" class="action-icon" aria-hidden="true" />
             <span>我的内容</span>
           </RouterLink>
         </nav>
@@ -61,7 +57,7 @@
               title="删除存档"
               @click.stop="requestDeleteArchive(item.id)"
             >
-              <span class="history-delete-icon" :style="deleteIconStyle" aria-hidden="true"></span>
+              <Icon icon="solar:trash-bin-trash-outline" class="history-delete-icon" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -74,7 +70,7 @@
             @click="openSettingsModal"
             :style="{ justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', padding: isSidebarCollapsed ? '12px' : '12px 14px' }"
           >
-            <span class="action-icon settings-icon" aria-hidden="true" :style="{ margin: isSidebarCollapsed ? '0' : '' }"></span>
+            <Icon icon="solar:settings-outline" class="action-icon" aria-hidden="true" :style="{ margin: isSidebarCollapsed ? '0' : '' }" />
             <span v-show="!isSidebarCollapsed">设置与帮助</span>
           </button>
         </div>
@@ -111,7 +107,7 @@
         <div class="top-right">
           <template v-if="showWorkspaceControls">
             <button class="widget-btn" title="社区" @click="goCommunity">
-              <img class="widget-icon" :src="communityIcon" alt="community widget" />
+              <Icon :icon="communityIcon" class="widget-icon" />
             </button>
             <button
               v-if="hasModelDrawer && !isHomeWelcomeState"
@@ -119,11 +115,11 @@
               title="建模抽屉"
               @click="toggleModelDrawer"
             >
-              <img class="widget-icon" :src="uShowIcon" alt="model drawer" />
+              <Icon icon="solar:widget-5-outline" class="widget-icon" />
             </button>
           </template>
           <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
-            <img class="avatar-icon" src="/assets/admin.jpg" alt="avatar" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+            <Icon icon="solar:user-circle-outline" class="avatar-icon" />
           </button>
         </div>
       </header>
@@ -155,7 +151,7 @@
                 <button v-if="imageFile" class="tool-btn ghost" @click="clearImage">移除</button>
               </template>
               <button class="send-btn" aria-label="发送生成请求" @click="generateFromComposer">
-                <img :src="sendIcon" class="send-icon" alt="send" />
+                <Icon icon="solar:arrow-up-linear" class="send-icon" />
               </button>
             </div>
           </div>
@@ -312,6 +308,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { Icon } from '@iconify/vue';
 import { gsap } from 'gsap';
 import { useAuthStore } from '@/packages/auth/store/useAuthStore';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
@@ -319,14 +316,6 @@ import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
 import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
-
-import uSocialIcon from '../assets/uSocial.svg';
-import socialIcon from '../assets/Social.svg';
-import uMyIcon from '../assets/uMy.svg';
-import myIcon from '../assets/My.svg';
-import uShowIcon from '../assets/uShow.svg';
-import sendIcon from '../assets/send.svg';
-import deleteIcon from '../assets/delete.svg';
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
@@ -360,9 +349,6 @@ const settingsBtnRef = ref(null);
 const userDropdownStyle = ref({});
 const settingsDropdownStyle = ref({});
 const activeTheme = ref('light');
-const deleteIconStyle = {
-  '--delete-icon': `url(${deleteIcon})`
-};
 
 const prefersReducedMotion = useReducedMotion();
 
@@ -425,8 +411,11 @@ const layoutVars = computed(() => ({
 
 const isStandaloneRoute = computed(() => Boolean(route.meta && route.meta.standalone));
 const showBackBtn = computed(() => route.path !== '/' && !isCommunityRoute.value);
-const communityIcon = computed(() => (route.path.startsWith('/community') ? socialIcon : uSocialIcon));
-const profileIcon = computed(() => (currentUser.value ? myIcon : uMyIcon));
+const communityIcon = computed(() =>
+  route.path.startsWith('/community')
+    ? 'solar:users-group-rounded-bold'
+    : 'solar:users-group-rounded-outline'
+);
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -513,40 +502,20 @@ const generateFromComposer = async () => {
     console.warn('Failed to read composer image:', error);
   }
 
-  const taskId = `task_${Date.now()}`;
-  taskStore.addTask({
-    id: taskId,
-    status: 'inferencing',
-    progress: 0,
+  const result = await taskStore.generateModelAsset({
     prompt,
     imageName: sourceFile ? sourceFile.name : '',
-    imagePreview: referenceImage,
-    createdAt: Date.now()
+    imagePreview: referenceImage
   });
 
-  isModelDrawerOpen.value = true;
-  isSidebarCollapsed.value = true;
-
-  let progress = 0;
-  const interval = setInterval(() => {
-    progress += 10;
-    if (progress >= 100) {
-      clearInterval(interval);
-      taskStore.updateTask(taskId, { status: 'success', progress: 100 });
-      taskStore.addAssetRecord({
-        id: taskId,
-        prompt,
-        imagePreview: referenceImage,
-        createdAt: Date.now()
-      });
-      const event = new CustomEvent('cross-fade-trigger', {
-        detail: { id: taskId, prompt, hasImage: !!sourceFile }
-      });
-      window.dispatchEvent(event);
-    } else {
-      taskStore.updateTask(taskId, { progress });
-    }
-  }, 1000);
+  if (result.ok) {
+    isModelDrawerOpen.value = true;
+    isSidebarCollapsed.value = true;
+    const event = new CustomEvent('cross-fade-trigger', {
+      detail: { id: result.taskId, prompt, hasImage: !!sourceFile }
+    });
+    window.dispatchEvent(event);
+  }
 
   promptText.value = '';
   clearImage();
@@ -1171,66 +1140,10 @@ nextTick(() => resizeComposer());
 }
 
 .action-icon {
-  position: relative;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: 0 0 16px;
-}
-
-.plus-icon::before,
-.plus-icon::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 12px;
-  height: 2px;
-  border-radius: 999px;
-  background: currentColor;
-  transform: translate(-50%, -50%);
-}
-
-.plus-icon::after {
-  width: 2px;
-  height: 12px;
-}
-
-.content-icon {
-  border-radius: 4px;
-  border: 2px solid currentColor;
-}
-
-.content-icon::before,
-.content-icon::after {
-  content: '';
-  position: absolute;
-  left: 2px;
-  right: 2px;
-  height: 2px;
-  border-radius: 999px;
-  background: currentColor;
-}
-
-.content-icon::before {
-  top: 4px;
-}
-
-.content-icon::after {
-  bottom: 4px;
-}
-
-.settings-icon {
-  border-radius: 50%;
-  border: 2px solid currentColor;
-}
-
-.settings-icon::before,
-.settings-icon::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
+  color: currentColor;
 }
 
 .sidebar-top {
@@ -1294,16 +1207,18 @@ nextTick(() => resizeComposer());
 }
 
 .hamburger-icon {
-  stroke: #475569;
-  transition: stroke 0.2s ease;
+  width: 22px;
+  height: 22px;
+  color: #475569;
+  transition: color 0.2s ease;
 }
 
 .app-shell.theme-dark .hamburger-icon {
-  stroke: #b3b3b3;
+  color: #b3b3b3;
 }
 
 .app-shell.theme-dark .hamburger-icon:hover {
-  stroke: #dbe4ef;
+  color: #dbe4ef;
 }
 
 .sidebar.collapsed .collapse-icon {
@@ -1423,13 +1338,10 @@ nextTick(() => resizeComposer());
 }
 
 .history-delete-icon {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   display: block;
-  object-fit: contain;
-  background-color: currentColor;
-  -webkit-mask: var(--delete-icon) no-repeat center / contain;
-  mask: var(--delete-icon) no-repeat center / contain;
+  color: currentColor;
 }
 
 
@@ -1591,7 +1503,7 @@ nextTick(() => resizeComposer());
 .widget-icon {
   width: 18px;
   height: 18px;
-  filter: none;
+  color: currentColor;
 }
 
 .avatar-btn {
@@ -1614,9 +1526,9 @@ nextTick(() => resizeComposer());
 }
 
 .avatar-icon {
-  width: 20px;
-  height: 20px;
-  filter: none;
+  width: 22px;
+  height: 22px;
+  color: currentColor;
 }
 
 .model-drawer {
@@ -1819,13 +1731,12 @@ nextTick(() => resizeComposer());
 .send-icon {
   width: 18px;
   height: 18px;
-  filter: brightness(0) invert(1);
-  transition: filter 0.2s;
+  transition: color 0.2s;
   transform: translateX(-1px);
 }
 
 .app-shell.theme-dark .send-icon {
-  filter: brightness(0);
+  color: #101826;
 }
 
 .dropdown-shell {
@@ -1998,12 +1909,6 @@ nextTick(() => resizeComposer());
   color: var(--color-danger);
 }
 
-
-.collapse-icon,
-.menu-icon,
-.menu-icon {
-  filter: brightness(0) invert(1);
-}
 
 @media (max-width: 920px) {
   .app-shell {
