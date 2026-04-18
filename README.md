@@ -21,6 +21,13 @@
 #### 软件架构
 软件架构说明
 
+- 前端：`ditfront`（Vue + Pinia）
+- 后端：`ditserver`（Spring Boot + JPA）
+- 数据库设计：`ditdbase`
+- 业务与产品文档：`ditdocs`
+
+后端接口与运行说明见：`ditdocs/SpringBoot后端说明.md`
+
 
 #### 安装教程
 

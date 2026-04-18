@@ -2,11 +2,51 @@
   "workspaces": {
     "user_default_001": {
       "version": 2,
-      "activeArchiveId": "archive_1776384631420",
+      "activeArchiveId": "archive_1776495905346",
       "archiveOrder": [
+        "archive_1776495905346",
         "archive_1776384631420"
       ],
       "archives": {
+        "archive_1776495905346": {
+          "id": "archive_1776495905346",
+          "title": "是的",
+          "ownerId": "user_default_001",
+          "ownerName": "demo_user",
+          "tasks": [
+            {
+              "id": "task_1776495905346",
+              "status": "success",
+              "progress": 100,
+              "prompt": "是的",
+              "imageName": "",
+              "imagePreview": "",
+              "createdAt": 1776495905346,
+              "updatedAt": 1776495915347
+            }
+          ],
+          "messages": [
+            {
+              "id": "msg_1776495905347_zxcplh",
+              "role": "user",
+              "text": "是的",
+              "createdAt": 1776495905346
+            }
+          ],
+          "modelAsset": {
+            "id": "task_1776495905346",
+            "prompt": "是的",
+            "imagePreview": "",
+            "createdAt": 1776495915348,
+            "updatedAt": 1776495915348
+          },
+          "sourceCommunityId": "",
+          "isPrivate": true,
+          "remixCount": 0,
+          "status": "idle",
+          "createdAt": 1776495905346,
+          "updatedAt": 1776495915348
+        },
         "archive_1776384631420": {
           "id": "archive_1776384631420",
           "title": "新工作",
@@ -20,7 +60,7 @@
           "remixCount": 0,
           "status": "idle",
           "createdAt": 1776384631420,
-          "updatedAt": 1776384631420
+          "updatedAt": 1776495885547
         }
       }
     }

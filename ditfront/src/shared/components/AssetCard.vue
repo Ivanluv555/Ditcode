@@ -38,7 +38,7 @@ const props = defineProps({
 const router = useRouter();
 const cardRef = ref(null);
 const prefersReducedMotion = useReducedMotion();
-const resolvedCover = props.cover || '/index.jpg';
+const resolvedCover = props.cover || '/assets/index.jpg';
 
 const cardStyle = {
   '--card-delay': `${props.delay}ms`

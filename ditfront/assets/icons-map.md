@@ -1,9 +1,45 @@
-# Icon 资源命名清单
+# Icon & 静态图片资源清单
 
 说明：
 - 统一使用 `kebab-case` 命名，例如：`ic-settings-outline.svg`
 - 推荐格式：`ic-<业务域>-<语义>-<风格>.svg`
 - 风格后缀建议：`outline` / `filled` / `duotone`
+
+## 现有资源映射
+
+| 文件名 | 类型 | 作用说明 |
+| --- | --- | --- |
+| Login.svg | icon | 登录按钮图标 |
+| My.svg | icon | 个人中心图标 |
+| Register.svg | icon | 注册按钮图标 |
+| Social.svg | icon | 社交相关图标 |
+| admin.jpg | image | 管理员头像或后台图片 |
+| delete.svg | icon | 删除操作图标 |
+| favicon.svg | icon | 网站 favicon 图标 |
+| icons.svg | icon | SVG 图标集合（Sprite） |
+| animations/loading-spinner.svg | animation | 聊天生成中的加载动画（Home 气泡） |
+| index.jpg | image | 首页展示图片 |
+| jianzhu(black).json | icon数据 | 建筑相关黑色风格图标数据 |
+| jianzhu(white).json | icon数据 | 建筑相关白色风格图标数据 |
+| return.svg | icon | 返回按钮图标 |
+| send.svg | icon | 发送按钮图标 |
+| uMy.svg | icon | 用户中心图标（变体） |
+| uShow.svg | icon | 展示/预览图标（变体） |
+| uSocial.svg | icon | 社交相关图标（变体） |
+| 见筑（横）.svg | icon | 建筑横向图标 |
+| 见筑（竖）.svg | icon | 建筑竖向图标 |
+
+> 如需补充说明，请在下方继续添加。
+
+---
+
+## 详细命名规范与推荐
+
+- 统一使用 `kebab-case` 命名，例如：`ic-settings-outline.svg`
+- 推荐格式：`ic-<业务域>-<语义>-<风格>.svg`
+- 风格后缀建议：`outline` / `filled` / `duotone`
+
+（以下为原有命名规范与推荐，供参考）
 
 ## 导航与布局
 

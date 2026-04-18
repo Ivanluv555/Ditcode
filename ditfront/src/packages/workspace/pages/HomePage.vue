@@ -23,12 +23,24 @@
       <div class="chat-wrap">
         <p class="chat-title">最近对话</p>
         <div class="bubble-list">
-          <div v-for="bubble in userBubbles" :key="bubble.key" class="bubble-item">
+          <div
+            v-for="bubble in userBubbles"
+            :key="bubble.key"
+            class="bubble-item"
+            :class="{ 'bubble-item-new': !animatedBubbleKeys.includes(bubble.key) }"
+            :data-bubble-key="bubble.key"
+          >
             <span v-if="showPublishedAuthor" class="bubble-author">{{ publishedAuthorName }}</span>
             <div class="bubble user">{{ bubble.text }}</div>
             <span class="bubble-time">{{ formatDate(bubble.createdAt) }}</span>
           </div>
-          <p v-if="userBubbles.length === 0" class="chat-empty">这个存档还没有对话，先输入你的想法吧。</p>
+          <div v-if="loadingTaskExists" class="bubble-item bubble-item-loading">
+            <div class="bubble loading">
+              <img src="/assets/animations/loading-spinner.svg" class="bubble-loading-icon" alt="loading" />
+              <span>正在生成中...</span>
+            </div>
+          </div>
+          <p v-if="userBubbles.length === 0 && !loadingTaskExists" class="chat-empty">这个存档还没有对话，先输入你的想法吧。</p>
         </div>
       </div>
     </template>
@@ -43,6 +55,7 @@ import { gsap } from 'gsap';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import welcomeAnimation from '@/shared/assets/AnimationIndex.json';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
+import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
 
 const FORCE_WELCOME_ONCE_KEY = 'ditapp_force_welcome_once';
 const FORCE_WELCOME_BASELINE_KEY = 'ditapp_force_welcome_baseline';
@@ -55,8 +68,8 @@ const forceWelcomeBaseline = ref(0);
 const homeRef = ref(null);
 const prefersReducedMotion = useReducedMotion();
 let welcomeCtx = null;
-let bubbleCtx = null;
 const currentArchive = computed(() => taskStore.currentArchive);
+const animatedBubbleKeys = ref([]);
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -95,6 +108,9 @@ const historyEntries = computed(() => {
 const userBubbles = computed(() =>
   [...taskEntries.value, ...historyEntries.value].sort((a, b) => a.createdAt - b.createdAt)
 );
+const loadingTaskExists = computed(() =>
+  taskStore.tasks.some((task) => ['queued', 'inferencing', 'compositing'].includes(task.status))
+);
 
 const showPublishedAuthor = computed(() => Boolean(currentArchive.value && currentArchive.value.isPrivate === false));
 const publishedAuthorName = computed(() => currentArchive.value?.ownerName || '社区用户');
@@ -131,34 +147,45 @@ const runWelcomeAnimation = () => {
       {
         opacity: 1,
         y: 0,
-        duration: 0.6,
+        duration: MOTION_DURATION.slow,
         stagger: 0.1,
-        ease: 'power3.out'
+        ease: MOTION_EASE.enter
       }
     );
   }, homeRef.value);
 };
 
+const markBubblesAnimated = (keys) => {
+  if (!keys.length) return;
+  animatedBubbleKeys.value = [...new Set([...animatedBubbleKeys.value, ...keys])];
+};
+
 const runBubbleAnimation = () => {
   if (!homeRef.value || showWelcome.value) return;
+  const bubbleNodes = Array.from(homeRef.value.querySelectorAll('.bubble-item-new[data-bubble-key]'));
+  if (!bubbleNodes.length) return;
 
-  if (bubbleCtx) {
-    bubbleCtx.revert();
-    bubbleCtx = null;
+  const bubbleKeys = bubbleNodes.map((node) => node.dataset.bubbleKey).filter(Boolean);
+  if (!bubbleKeys.length) return;
+
+  if (prefersReducedMotion.value) {
+    markBubblesAnimated(bubbleKeys);
+    return;
   }
 
-  if (prefersReducedMotion.value) return;
-
-  bubbleCtx = gsap.context(() => {
-    const bubbles = homeRef.value.querySelectorAll('.bubble-item');
-    if (!bubbles.length) return;
-
-    gsap.fromTo(
-      bubbles,
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, duration: 0.32, stagger: 0.045, ease: 'power3.out' }
-    );
-  }, homeRef.value);
+  gsap.killTweensOf(bubbleNodes);
+  gsap.fromTo(
+    bubbleNodes,
+    { opacity: 0, y: 8 },
+    {
+      opacity: 1,
+      y: 0,
+      duration: MOTION_DURATION.normal,
+      stagger: 0.04,
+      ease: MOTION_EASE.enter,
+      onComplete: () => markBubblesAnimated(bubbleKeys)
+    }
+  );
 };
 
 onMounted(() => {
@@ -189,11 +216,6 @@ onBeforeUnmount(() => {
     welcomeCtx.revert();
     welcomeCtx = null;
   }
-
-  if (bubbleCtx) {
-    bubbleCtx.revert();
-    bubbleCtx = null;
-  }
 });
 
 watch(
@@ -213,6 +235,21 @@ watch(
       runWelcomeAnimation();
       runBubbleAnimation();
     });
+  }
+);
+
+watch(
+  () => userBubbles.value.map((item) => item.key).join('|'),
+  () => {
+    nextTick(() => runBubbleAnimation());
+  }
+);
+
+watch(
+  () => currentArchive.value?.id || '',
+  () => {
+    animatedBubbleKeys.value = [];
+    nextTick(() => runBubbleAnimation());
   }
 );
 </script>
@@ -327,6 +364,22 @@ h2 {
   line-height: 1.45;
   word-break: break-word;
   box-shadow: var(--shadow-card);
+}
+
+.bubble.loading {
+  border-radius: 12px;
+  background: var(--color-bg-soft);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bubble-loading-icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  color: currentColor;
 }
 
 .bubble-author {

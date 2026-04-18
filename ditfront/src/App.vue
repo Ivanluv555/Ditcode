@@ -123,7 +123,7 @@
             </button>
           </template>
           <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
-            <img class="avatar-icon" src="/admin.jpg" alt="avatar" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+            <img class="avatar-icon" src="/assets/admin.jpg" alt="avatar" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
           </button>
         </div>
       </header>
@@ -136,7 +136,7 @@
         @enter="onComposerEnter"
         @leave="onComposerLeave"
       >
-        <div v-if="showComposerPanel" class="bottom-composer-wrap">
+        <div v-show="showComposerPanel" class="bottom-composer-wrap">
           <div class="bottom-composer">
             <textarea
               ref="composerInputRef"
@@ -317,15 +317,16 @@ import { useAuthStore } from '@/packages/auth/store/useAuthStore';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
+import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
 import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
 
-import uSocialIcon from '../icons/uSocial.svg';
-import socialIcon from '../icons/Social.svg';
-import uMyIcon from '../icons/uMy.svg';
-import myIcon from '../icons/My.svg';
-import uShowIcon from '../icons/uShow.svg';
-import sendIcon from '../icons/send.svg';
-import deleteIcon from '../icons/delete.svg';
+import uSocialIcon from '../assets/uSocial.svg';
+import socialIcon from '../assets/Social.svg';
+import uMyIcon from '../assets/uMy.svg';
+import myIcon from '../assets/My.svg';
+import uShowIcon from '../assets/uShow.svg';
+import sendIcon from '../assets/send.svg';
+import deleteIcon from '../assets/delete.svg';
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
@@ -702,7 +703,7 @@ const runShellIntroAnimation = () => {
   gsap.fromTo(
     sidebarRef.value,
     { xPercent: -100, opacity: 0 },
-    { xPercent: 0, opacity: 1, duration: 0.65, ease: 'power3.out' }
+    { xPercent: 0, opacity: 1, duration: MOTION_DURATION.intro, ease: MOTION_EASE.enter }
   );
 
   const dot = brandRef.value.querySelector('.brand-dot');
@@ -719,8 +720,8 @@ const runShellIntroAnimation = () => {
         opacity: 1,
         scale: 1,
         boxShadow: '0 0 0 5px rgba(58, 139, 255, 0.14)',
-        duration: 0.8,
-        ease: 'back.out(1.2)'
+        duration: MOTION_DURATION.slow,
+        ease: MOTION_EASE.bounceEnter
       }
     );
   }
@@ -729,7 +730,7 @@ const runShellIntroAnimation = () => {
     timeline.fromTo(
       title,
       { opacity: 0, x: -10 },
-      { opacity: 1, x: 0, duration: 0.5, ease: 'power3.out' },
+      { opacity: 1, x: 0, duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter },
       '<0.1'
     );
   }
@@ -738,7 +739,7 @@ const runShellIntroAnimation = () => {
     timeline.fromTo(
       subtitle,
       { opacity: 0, y: 5 },
-      { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' },
+      { opacity: 1, y: 0, duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter },
       '<0.1'
     );
   }
@@ -755,7 +756,7 @@ const onFadeEnter = (el, done) => {
     return;
   }
 
-  gsap.to(el, { opacity: 1, duration: 0.18, ease: 'power1.out', onComplete: done });
+  gsap.to(el, { opacity: 1, duration: MOTION_DURATION.fast, ease: MOTION_EASE.subtleEnter, onComplete: done });
 };
 
 const onFadeLeave = (el, done) => {
@@ -764,7 +765,7 @@ const onFadeLeave = (el, done) => {
     return;
   }
 
-  gsap.to(el, { opacity: 0, duration: 0.18, ease: 'power1.in', onComplete: done });
+  gsap.to(el, { opacity: 0, duration: MOTION_DURATION.fast, ease: MOTION_EASE.subtleExit, onComplete: done });
 };
 
 const onComposerBeforeEnter = (el) => {
@@ -783,7 +784,7 @@ const onComposerEnter = (el, done) => {
   gsap.fromTo(
     el,
     { opacity: 0, yPercent: 100 },
-    { opacity: 1, yPercent: 0, duration: 0.56, ease: 'power3.out', onComplete: done }
+    { opacity: 1, yPercent: 0, duration: MOTION_DURATION.slow, ease: MOTION_EASE.enter, onComplete: done }
   );
 };
 
@@ -796,8 +797,8 @@ const onComposerLeave = (el, done) => {
   gsap.to(el, {
     opacity: 0,
     yPercent: 100,
-    duration: 0.46,
-    ease: 'power2.in',
+    duration: MOTION_DURATION.normal,
+    ease: MOTION_EASE.exit,
     onComplete: done
   });
 };
@@ -825,8 +826,8 @@ const onDropdownPanelEnter = (el, done, panelType) => {
       x: 0,
       y: 0,
       scale: 1,
-      duration: 0.32,
-      ease: 'power3.out',
+      duration: MOTION_DURATION.normal,
+      ease: MOTION_EASE.enter,
       onComplete: done
     }
   );
@@ -840,8 +841,8 @@ const onDropdownPanelEnter = (el, done, panelType) => {
       {
         opacity: 1,
         x: 0,
-        duration: 0.36,
-        ease: 'power3.out',
+        duration: MOTION_DURATION.normal,
+        ease: MOTION_EASE.enter,
         stagger: 0.056,
         delay: 0.064
       }
@@ -858,8 +859,8 @@ const onDropdownPanelLeave = (el, done) => {
   gsap.to(el, {
     opacity: 0,
     scale: 0.985,
-    duration: 0.2,
-    ease: 'power2.in',
+    duration: MOTION_DURATION.fast,
+    ease: MOTION_EASE.exit,
     onComplete: done
   });
 };
@@ -878,7 +879,7 @@ const onModalEnter = (el, done) => {
   gsap.fromTo(
     el,
     { opacity: 0, y: -18, scale: 0.98 },
-    { opacity: 1, y: 0, scale: 1, duration: 0.34, ease: 'power3.out', onComplete: done }
+    { opacity: 1, y: 0, scale: 1, duration: MOTION_DURATION.normal, ease: MOTION_EASE.enter, onComplete: done }
   );
 };
 
@@ -892,8 +893,8 @@ const onModalLeave = (el, done) => {
     opacity: 0,
     y: -12,
     scale: 0.98,
-    duration: 0.2,
-    ease: 'power2.in',
+    duration: MOTION_DURATION.fast,
+    ease: MOTION_EASE.exit,
     onComplete: done
   });
 };
@@ -1065,7 +1066,7 @@ nextTick(() => resizeComposer());
   --panel-gap: 16px;
   --drawer-top-offset: 84px;
   --drawer-edge-gap: 16px;
-  --composer-width: min(900px, calc(100vw - var(--left-panel-width) - var(--right-panel-width) - 26px));
+  --composer-width: min(900px, max(300px, calc(100vw - var(--left-panel-width) - var(--right-panel-width) - 26px)));
   height: 100vh;
   display: flex;
   overflow: hidden;
@@ -1375,7 +1376,7 @@ nextTick(() => resizeComposer());
   gap: 8px;
   margin-bottom: 8px;
   background: #f8fbff;
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 6px 8px;
 }
 
@@ -1683,17 +1684,17 @@ nextTick(() => resizeComposer());
   right: calc(var(--right-panel-width, 0px) + var(--panel-gap, 16px));
   bottom: 0;
   z-index: 40;
-  padding: 12px 0;
+  padding: 12px 16px;
   box-sizing: border-box;
   pointer-events: none;
-  transition: right 0.24s ease;
+  transition: right 0.24s ease, opacity 0.24s ease;
   display: flex;
   justify-content: center;
 }
 
 .bottom-composer {
-  width: 100%;
-  max-width: 900px;
+  width: min(100%, var(--composer-width));
+  max-width: var(--composer-width);
   margin: 0 auto;
   border: 1px solid #d7e2f5;
   background: rgba(255, 255, 255, 0.95);

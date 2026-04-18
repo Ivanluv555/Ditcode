@@ -111,7 +111,7 @@ const contentCards = computed(() => [
     key: `archive-${item.id}`,
     archiveId: item.id,
     isPrivate: item.isPrivate !== false,
-    cover: item.modelAsset?.imagePreview || '/index.jpg',
+    cover: item.modelAsset?.imagePreview || '/assets/index.jpg',
     title: item.lastMessage || item.title || '未命名内容',
     author: currentUser.value ? `${currentUser.value.username} 的作品` : '我的内容',
     badge: item.modelAsset ? '已保存' : '编辑中',

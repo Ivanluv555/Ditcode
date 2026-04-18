@@ -33,7 +33,7 @@ const taskStore = useTaskStore();
 const communityCards = computed(() =>
   taskStore.communityArchives.map((item) => ({
     id: item.id,
-    cover: item.modelAsset?.imagePreview || '/index.jpg',
+    cover: item.modelAsset?.imagePreview || '/assets/index.jpg',
     author: item.ownerName || '社区用户',
     remixCount: item.remixCount || 0,
     promptTags: item.messages.length
