@@ -5,6 +5,7 @@ import com.design26.ditserver.core.util.IdGenerator;
 import com.design26.ditserver.module.auth.entity.UserEntity;
 import com.design26.ditserver.module.community.entity.CommunityPublicationEntity;
 import com.design26.ditserver.module.community.repository.CommunityPublicationRepository;
+import com.design26.ditserver.module.community.repository.RemixEventRepository;
 import com.design26.ditserver.module.workspace.dto.ArchivePayload;
 import com.design26.ditserver.module.workspace.dto.MessagePayload;
 import com.design26.ditserver.module.workspace.dto.ModelAssetPayload;
@@ -43,6 +44,7 @@ public class WorkspaceService {
     private final ArchiveTaskRepository archiveTaskRepository;
     private final ArchiveModelAssetRepository archiveModelAssetRepository;
     private final CommunityPublicationRepository communityPublicationRepository;
+    private final RemixEventRepository remixEventRepository;
     private final IdGenerator idGenerator;
 
     public WorkspaceService(
@@ -51,6 +53,7 @@ public class WorkspaceService {
         ArchiveTaskRepository archiveTaskRepository,
         ArchiveModelAssetRepository archiveModelAssetRepository,
         CommunityPublicationRepository communityPublicationRepository,
+        RemixEventRepository remixEventRepository,
         IdGenerator idGenerator
     ) {
         this.archiveRepository = archiveRepository;
@@ -58,6 +61,7 @@ public class WorkspaceService {
         this.archiveTaskRepository = archiveTaskRepository;
         this.archiveModelAssetRepository = archiveModelAssetRepository;
         this.communityPublicationRepository = communityPublicationRepository;
+        this.remixEventRepository = remixEventRepository;
         this.idGenerator = idGenerator;
     }
 
@@ -108,10 +112,7 @@ public class WorkspaceService {
 
         for (ArchiveEntity archive : existing) {
             if (!incomingIds.contains(archive.getId())) {
-                archiveMessageRepository.deleteByArchive_Id(archive.getId());
-                archiveTaskRepository.deleteByArchive_Id(archive.getId());
-                archiveModelAssetRepository.deleteByArchiveId(archive.getId());
-                archiveRepository.delete(archive);
+                deleteArchiveWithDependencies(archive.getId());
             }
         }
 
@@ -122,10 +123,7 @@ public class WorkspaceService {
     public Map<String, Object> resetWorkspace(UserEntity user) {
         List<ArchiveEntity> existing = archiveRepository.findByOwner_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(user.getId());
         for (ArchiveEntity archive : existing) {
-            archiveMessageRepository.deleteByArchive_Id(archive.getId());
-            archiveTaskRepository.deleteByArchive_Id(archive.getId());
-            archiveModelAssetRepository.deleteByArchiveId(archive.getId());
-            archiveRepository.delete(archive);
+            deleteArchiveWithDependencies(archive.getId());
         }
         return buildWorkspaceResponse(user);
     }
@@ -176,7 +174,7 @@ public class WorkspaceService {
             task.setProgress(clamp(taskPayload.getProgress(), 0, 100));
             task.setPrompt(defaultIfBlank(taskPayload.getPrompt(), ""));
             task.setImageName(blankToNull(taskPayload.getImageName()));
-            task.setImagePreview(blankToNull(taskPayload.getImagePreview()));
+            task.setImagePreview(normalizeTaskImagePreview(taskPayload.getImagePreview()));
             if (task.getImageName() != null || task.getImagePreview() != null) {
                 imageTaskCount++;
             }
@@ -190,8 +188,10 @@ public class WorkspaceService {
         }
 
         if (modelAsset != null) {
+            if (archive.getId() == null || archive.getId().isBlank()) {
+                throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "存档ID为空，无法保存模型资源");
+            }
             ArchiveModelAssetEntity asset = new ArchiveModelAssetEntity();
-            asset.setArchiveId(archive.getId());
             asset.setArchive(archive);
             asset.setPrompt(defaultIfBlank(modelAsset.getPrompt(), ""));
             asset.setImagePreview(blankToNull(modelAsset.getImagePreview()));
@@ -361,5 +361,27 @@ public class WorkspaceService {
     private String blankToNull(String value) {
         String normalized = safeText(value);
         return normalized.isBlank() ? null : normalized;
+    }
+
+    private String normalizeTaskImagePreview(String value) {
+        String normalized = blankToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.startsWith("data:")) {
+            return null;
+        }
+        return normalized.length() > 255 ? null : normalized;
+    }
+
+    private void deleteArchiveWithDependencies(String archiveId) {
+        remixEventRepository.deleteByRemixerArchive_Id(archiveId);
+        remixEventRepository.deleteByPublication_Archive_Id(archiveId);
+        communityPublicationRepository.deleteByArchive_Id(archiveId);
+        archiveRepository.clearSourceArchiveReferences(archiveId);
+        archiveMessageRepository.deleteByArchive_Id(archiveId);
+        archiveTaskRepository.deleteByArchive_Id(archiveId);
+        archiveModelAssetRepository.deleteByArchiveId(archiveId);
+        archiveRepository.deleteById(archiveId);
     }
 }

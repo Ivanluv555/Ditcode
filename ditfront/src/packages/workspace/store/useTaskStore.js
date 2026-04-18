@@ -559,7 +559,7 @@ export const useTaskStore = defineStore('task', {
           });
       }
     },
-    async generateModelAsset({ prompt, imageName = '', imagePreview = '' }) {
+    async generateModelAsset({ prompt, imageName = '', imageBase64 = '' }) {
       const normalizedPrompt = (prompt || '').trim();
       if (!normalizedPrompt) {
         return { ok: false, message: 'prompt is required' };
@@ -571,29 +571,29 @@ export const useTaskStore = defineStore('task', {
 
       const archiveId = this.currentArchive?.id || '';
       const taskId = `task_${Date.now()}`;
-      this.addTask({
-        id: taskId,
-        status: 'inferencing',
-        progress: 5,
-        prompt: normalizedPrompt,
-        imageName,
-        imagePreview,
-        createdAt: Date.now()
-      });
+        this.addTask({
+          id: taskId,
+          status: 'inferencing',
+          progress: 5,
+          prompt: normalizedPrompt,
+          imageName,
+          imagePreview: '',
+          createdAt: Date.now()
+        });
 
       try {
         const result = await requestModelApi('/api/model/generate', {
           method: 'POST',
-          body: JSON.stringify({
-            taskId,
-            archiveId,
-            prompt: normalizedPrompt,
-            imageName,
-            imagePreview
-          })
-        });
+            body: JSON.stringify({
+              taskId,
+              archiveId,
+              prompt: normalizedPrompt,
+              imageName,
+              imageBase64
+            })
+          });
 
-        const finalPreview = result.imagePreview || imagePreview || '';
+        const finalPreview = result.imagePreview || '';
         this.updateTask(taskId, { status: 'success', progress: 100, updatedAt: Date.now() });
         this.addAssetRecord({
           id: taskId,

@@ -55,7 +55,7 @@
               v-if="item.canDelete"
               class="history-delete"
               title="删除存档"
-              @click.stop="requestDeleteArchive(item.id)"
+              @click.stop="requestDeleteArchive(item)"
             >
               <Icon icon="solar:trash-bin-trash-outline" class="history-delete-icon" aria-hidden="true" />
             </button>
@@ -293,10 +293,20 @@
         >
           <div class="user-modal" @click.stop>
             <h3>删除存档</h3>
-            <p>删除后将无法恢复，你确定要删除这个存档吗？</p>
+            <p v-if="!isPendingDeletePublished">
+              删除后将无法恢复，你确定要删除这个存档吗？
+            </p>
+            <p v-else-if="!deleteArchiveSecondConfirm">
+              该存档已发布到社区，删除后社区中的对应内容也会消失。请再次确认是否继续删除。
+            </p>
+            <p v-else>
+              这是第二次确认：删除后会同时移除社区发布内容，且无法恢复。
+            </p>
             <div class="modal-actions">
               <button class="modal-btn" @click="closeDeleteArchiveModal">取消</button>
-              <button class="modal-btn danger" @click="confirmDeleteArchive">确认删除</button>
+              <button class="modal-btn danger" @click="confirmDeleteArchive">
+                {{ isPendingDeletePublished && !deleteArchiveSecondConfirm ? '继续删除' : '确认删除' }}
+              </button>
             </div>
           </div>
         </Transition>
@@ -341,6 +351,8 @@ const showSettingsModal = ref(false);
 const showLoginPromptModal = ref(false);
 const showDeleteArchiveModal = ref(false);
 const pendingDeleteArchiveId = ref('');
+const pendingDeleteArchivePublished = ref(false);
+const deleteArchiveSecondConfirm = ref(false);
 const appShellRef = ref(null);
 const sidebarRef = ref(null);
 const brandRef = ref(null);
@@ -505,14 +517,19 @@ const generateFromComposer = async () => {
   const result = await taskStore.generateModelAsset({
     prompt,
     imageName: sourceFile ? sourceFile.name : '',
-    imagePreview: referenceImage
+    imageBase64: referenceImage
   });
 
   if (result.ok) {
     isModelDrawerOpen.value = true;
     isSidebarCollapsed.value = true;
     const event = new CustomEvent('cross-fade-trigger', {
-      detail: { id: result.taskId, prompt, hasImage: !!sourceFile }
+      detail: {
+        id: result.taskId,
+        prompt,
+        hasImage: !!sourceFile,
+        imagePreview: result.imagePreview || ''
+      }
     });
     window.dispatchEvent(event);
   }
@@ -623,21 +640,31 @@ const closeLoginPromptModal = () => {
   showLoginPromptModal.value = false;
 };
 
-const requestDeleteArchive = (archiveId) => {
-  pendingDeleteArchiveId.value = archiveId;
+const requestDeleteArchive = (archive) => {
+  pendingDeleteArchiveId.value = archive?.id || '';
+  pendingDeleteArchivePublished.value = Boolean(archive && archive.isPrivate === false);
+  deleteArchiveSecondConfirm.value = false;
   showDeleteArchiveModal.value = true;
 };
 
 const closeDeleteArchiveModal = () => {
   showDeleteArchiveModal.value = false;
   pendingDeleteArchiveId.value = '';
+  pendingDeleteArchivePublished.value = false;
+  deleteArchiveSecondConfirm.value = false;
 };
 
 const confirmDeleteArchive = async () => {
   if (!pendingDeleteArchiveId.value) return;
+  if (pendingDeleteArchivePublished.value && !deleteArchiveSecondConfirm.value) {
+    deleteArchiveSecondConfirm.value = true;
+    return;
+  }
   await taskStore.deleteArchive(pendingDeleteArchiveId.value);
   closeDeleteArchiveModal();
 };
+
+const isPendingDeletePublished = computed(() => pendingDeleteArchivePublished.value);
 
 const goLoginFromPrompt = () => {
   showLoginPromptModal.value = false;

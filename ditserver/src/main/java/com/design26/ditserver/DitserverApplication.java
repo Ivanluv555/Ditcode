@@ -9,5 +9,4 @@ public class DitserverApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(DitserverApplication.class, args);
 	}
-
 }

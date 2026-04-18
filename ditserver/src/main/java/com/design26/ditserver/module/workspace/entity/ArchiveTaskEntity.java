@@ -31,7 +31,7 @@ public class ArchiveTaskEntity {
     @Column(name = "image_name", length = 255)
     private String imageName;
 
-    @Column(name = "image_preview", columnDefinition = "TEXT")
+    @Column(name = "image_preview", columnDefinition = "LONGTEXT")
     private String imagePreview;
 
     @Column(name = "created_at", nullable = false)

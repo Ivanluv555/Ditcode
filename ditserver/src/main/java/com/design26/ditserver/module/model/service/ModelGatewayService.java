@@ -12,7 +12,9 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -47,12 +49,8 @@ public class ModelGatewayService {
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("taskId", taskId);
-        payload.put("archiveId", defaultString(request.archiveId()));
         payload.put("prompt", request.prompt().trim());
-        payload.put("imageName", defaultString(request.imageName()));
-        payload.put("imagePreview", defaultString(request.imagePreview()));
-        payload.put("client", "ditserver");
+        payload.put("imageBase64", normalizeImageBase64(request.imageBase64()));
 
         try {
             HttpRequest.Builder builder = HttpRequest.newBuilder()
@@ -66,14 +64,35 @@ public class ModelGatewayService {
                 builder.header("Authorization", "Bearer " + apiKey);
             }
 
-            HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+            HttpResponse<byte[]> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new ApiException(HttpStatus.BAD_GATEWAY, "模型服务调用失败");
             }
 
-            Map<String, Object> raw = objectMapper.readValue(response.body(), new TypeReference<>() {});
-            String imagePreview = pickImagePreview(raw, request.imagePreview());
-            String provider = Optional.ofNullable(raw.get("provider")).map(Object::toString).orElse("upstream");
+            String contentType = response.headers().firstValue("Content-Type").orElse("");
+            String imagePreview;
+            Map<String, Object> raw;
+            String provider = "upstream";
+
+            if (contentType.startsWith("image/")) {
+                String normalizedContentType = contentType.split(";")[0].trim();
+                String base64 = Base64.getEncoder().encodeToString(response.body());
+                imagePreview = "data:" + normalizedContentType + ";base64," + base64;
+                raw = new LinkedHashMap<>();
+                raw.put("provider", "upstream-image");
+                raw.put("contentType", normalizedContentType);
+                raw.put("xTaskId", response.headers().firstValue("X-Task-Id").orElse(""));
+                raw.put("xResultMode", response.headers().firstValue("X-Result-Mode").orElse(""));
+                raw.put("size", response.body().length);
+                provider = "upstream-image";
+            } else if (contentType.startsWith("application/json")) {
+                raw = objectMapper.readValue(new String(response.body(), StandardCharsets.UTF_8), new TypeReference<>() {});
+                imagePreview = pickImagePreview(raw, "");
+                provider = Optional.ofNullable(raw.get("provider")).map(Object::toString).orElse("upstream");
+            } else {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "模型响应格式不支持");
+            }
+
             return new ModelGenerateResponse(
                 true,
                 provider,
@@ -121,5 +140,14 @@ public class ModelGatewayService {
 
     private String defaultString(String value) {
         return Optional.ofNullable(value).orElse("");
+    }
+
+    private String normalizeImageBase64(String value) {
+        String normalized = defaultString(value).trim();
+        int commaIndex = normalized.indexOf(',');
+        if (normalized.startsWith("data:") && commaIndex >= 0 && commaIndex < normalized.length() - 1) {
+            return normalized.substring(commaIndex + 1);
+        }
+        return normalized;
     }
 }

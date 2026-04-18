@@ -8,6 +8,7 @@ public record ModelGenerateRequest(
     @NotBlank(message = "prompt 不能为空")
     String prompt,
     String imageName,
-    String imagePreview
+    @NotBlank(message = "imageBase64 不能为空")
+    String imageBase64
 ) {
 }

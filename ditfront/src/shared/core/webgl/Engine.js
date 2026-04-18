@@ -51,16 +51,37 @@ export class WebGLEngine {
       console.warn("Could not load ktx2 map in mock", e);
     }
   }
-  async onCrossFade() {
+  async onCrossFade(event) {
     if (!this.rootSphere) return;
     const geometry = new THREE.SphereGeometry(500, 60, 40);
     geometry.scale(-1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ 
-      color: 0x00ffaa,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false
-    });
+    const textureUrl = event?.detail?.imagePreview || '';
+    let material = null;
+
+    if (textureUrl) {
+      try {
+        const texture = await new THREE.TextureLoader().loadAsync(textureUrl);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        material = new THREE.MeshBasicMaterial({
+          map: texture,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false
+        });
+      } catch (error) {
+        console.warn('Failed to load panorama texture:', error);
+      }
+    }
+
+    if (!material) {
+      material = new THREE.MeshBasicMaterial({
+        color: 0x00ffaa,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      });
+    }
+
     const newSphere = new THREE.Mesh(geometry, material);
     newSphere.renderOrder = 1;
     this.scene.add(newSphere);
@@ -70,6 +91,11 @@ export class WebGLEngine {
       .onUpdate(() => { this.needsUpdate = true; })
       .onComplete(() => {
         if (this.rootSphere) {
+          if (this.rootSphere.material?.map) {
+            this.rootSphere.material.map.dispose();
+          }
+          this.rootSphere.material?.dispose();
+          this.rootSphere.geometry?.dispose();
           this.scene.remove(this.rootSphere);
         }
         this.rootSphere = newSphere;
