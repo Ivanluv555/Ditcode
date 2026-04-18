@@ -15,6 +15,7 @@ public class SessionEntity {
     @Column(length = 128, nullable = false)
     private String token;
 
+    // 一个会话对应一个用户，使用LAZY加载来优化性能，用户信息只有在需要时才会被加载
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
