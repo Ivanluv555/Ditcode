@@ -1,10 +1,10 @@
 <template>
-  <div class="task-pod" :class="{ 'expanded': isExpanded }" @mouseenter="isExpanded = true" @mouseleave="isExpanded = false">
+  <div class="task-pod" :class="{ expanded }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
     <div class="pod-icon">
-      <Icon v-if="tasks.length > 0" icon="solar:refresh-circle-outline" class="spinner" />
-      <Icon v-else icon="solar:check-circle-bold" class="check" />
+      <Icon v-if="tasks.length > 0" icon="fa6-solid:arrows-rotate" class="spinner" />
+      <Icon v-else icon="fa6-solid:circle-check" class="check" />
     </div>
-    <div class="task-list" v-if="isExpanded">
+    <div class="task-list" v-if="expanded">
       <div v-if="tasks.length === 0" class="empty">No active tasks</div>
       <div v-for="task in tasks" :key="task.id" class="task-item">
         <span class="status">{{ task.status }}</span>
@@ -19,10 +19,38 @@ import { ref, computed } from 'vue';
 import { Icon } from '@iconify/vue';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 
+const props = defineProps({
+  previewMode: {
+    type: Boolean,
+    default: false
+  },
+  previewTasks: {
+    type: Array,
+    default: () => []
+  },
+  forceExpanded: {
+    type: Boolean,
+    default: false
+  }
+});
+
 const taskStore = useTaskStore();
-const tasks = computed(() => taskStore.tasks.filter(t => t.status !== 'success'));
+const tasks = computed(() =>
+  props.previewMode ? props.previewTasks : taskStore.tasks.filter((task) => task.status !== 'success')
+);
 
 const isExpanded = ref(false);
+const expanded = computed(() => props.forceExpanded || props.previewMode || isExpanded.value);
+
+const handleMouseEnter = () => {
+  if (props.forceExpanded || props.previewMode) return;
+  isExpanded.value = true;
+};
+
+const handleMouseLeave = () => {
+  if (props.forceExpanded || props.previewMode) return;
+  isExpanded.value = false;
+};
 </script>
 
 <style scoped>

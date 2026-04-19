@@ -1,12 +1,13 @@
 <template>
   <div class="editor-panel" :class="{ 'is-mobile': isMobile }">
     <div class="header">
-      <h3>编辑模式</h3>
-      <button @click="generateNew" class="btn primary">生成</button>
+      <h3>{{ previewMode ? '建模预览' : '编辑模式' }}</h3>
+      <button v-if="!previewMode" @click="generateNew" class="btn primary">生成</button>
+      <span v-else class="preview-pill">Live</span>
     </div>
     <div class="content">
       <label>Prompt:</label>
-      <textarea v-model="promptText" rows="3" placeholder="描述你希望在此区域生成的物体..." />
+      <textarea v-model="promptText" rows="3" placeholder="描述你希望在此区域生成的物体..." :readonly="previewMode" />
 
       <label v-if="allowImageAttachment" class="upload-label" for="editor-image-upload">参考图（可选）</label>
       <div v-if="allowImageAttachment" class="upload-row">
@@ -15,12 +16,12 @@
         <button v-if="imageFile" @click="clearImage" class="btn ghost">移除</button>
       </div>
       <div v-if="allowImageAttachment && imageFile" class="filename">{{ imageFile.name }}</div>
-      <div v-if="allowImageAttachment && imagePreview" class="preview">
-        <img :src="imagePreview" alt="reference" />
+      <div v-if="resolvedImagePreview" class="preview">
+        <img :src="resolvedImagePreview" alt="reference" />
       </div>
 
-      <div v-if="taskStore.tasks.length" class="status-msg">
-        正在处理任务... 请查看左上角悬浮舱。
+      <div v-if="previewMode || taskStore.tasks.length" class="status-msg">
+        {{ previewMode ? '引擎正在处理当前建模任务...' : '正在处理任务... 请查看左上角悬浮舱。' }}
       </div>
     </div>
   </div>
@@ -31,30 +32,48 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 
+const props = defineProps({
+  previewMode: {
+    type: Boolean,
+    default: false
+  },
+  previewPrompt: {
+    type: String,
+    default: ''
+  },
+  previewImage: {
+    type: String,
+    default: ''
+  }
+});
+
 const isMobile = window.innerWidth <= 768;
-const promptText = ref('');
+const promptText = ref(props.previewPrompt);
 const imageFile = ref(null);
 const imagePreview = ref('');
 const taskStore = useTaskStore();
-const allowImageAttachment = computed(() => taskStore.currentArchiveMessages.length === 0);
+const allowImageAttachment = computed(() => !props.previewMode && taskStore.currentArchiveMessages.length === 0);
+const resolvedImagePreview = computed(() => (props.previewMode ? props.previewImage : imagePreview.value));
 
 const onPickFile = (event) => {
+  if (props.previewMode) return;
   if (!allowImageAttachment.value) return;
 
   const file = event.target.files && event.target.files[0];
   if (!file) return;
-  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  if (imagePreview.value.startsWith('blob:')) URL.revokeObjectURL(imagePreview.value);
   imageFile.value = file;
   imagePreview.value = URL.createObjectURL(file);
 };
 
 const clearImage = () => {
-  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  if (imagePreview.value.startsWith('blob:')) URL.revokeObjectURL(imagePreview.value);
   imageFile.value = null;
   imagePreview.value = '';
 };
 
 const generateNew = async () => {
+  if (props.previewMode) return;
   const referenceFile = allowImageAttachment.value ? imageFile.value : null;
   let referenceImage = '';
 
@@ -103,10 +122,19 @@ const generateNew = async () => {
 };
 
 onBeforeUnmount(() => {
-  if (imagePreview.value) {
+  if (imagePreview.value.startsWith('blob:')) {
     URL.revokeObjectURL(imagePreview.value);
   }
 });
+
+watch(
+  () => props.previewPrompt,
+  (value) => {
+    if (props.previewMode) {
+      promptText.value = value;
+    }
+  }
+);
 
 watch(
   () => allowImageAttachment.value,
@@ -206,6 +234,20 @@ textarea {
   color: var(--color-text-inverse);
 }
 
+.preview-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-soft);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .status-msg {
   color: var(--color-warning);
   font-size: 12px;
@@ -225,4 +267,3 @@ textarea {
   }
 }
 </style>
-

@@ -51,8 +51,6 @@ src/
   shared/
     components/
       AssetCard.vue         # 复用展示组件
-    assets/
-      AnimationIndex.json
     core/
       socket/
         index.js

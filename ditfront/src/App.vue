@@ -11,7 +11,7 @@
     <aside ref="sidebarRef" class="sidebar" :class="{ collapsed: isSidebarCollapsed }">
       <div class="sidebar-top">
         <button class="collapse-btn" @click="toggleSidebar" style="background: transparent; box-shadow: none; border: none; padding: 4px; cursor: pointer;">
-          <Icon icon="lucide:menu" class="hamburger-icon" />
+          <Icon icon="fa6-solid:bars" class="hamburger-icon" />
         </button>
       </div>
 
@@ -23,7 +23,7 @@
             :class="{ active: route.path === '/' }"
             @click="startNewWork"
           >
-            <Icon icon="solar:add-circle-outline" class="action-icon" aria-hidden="true" />
+            <Icon icon="fa6-solid:circle-plus" class="action-icon" aria-hidden="true" />
             <span>发起新工作</span>
           </RouterLink>
 
@@ -33,7 +33,7 @@
             :class="{ active: route.path.startsWith('/my-content') }"
             @click="collapseModelPanels"
           >
-            <Icon icon="solar:folder-with-files-outline" class="action-icon" aria-hidden="true" />
+            <Icon icon="fa6-solid:folder-open" class="action-icon" aria-hidden="true" />
             <span>我的内容</span>
           </RouterLink>
         </nav>
@@ -57,7 +57,7 @@
               title="删除存档"
               @click.stop="requestDeleteArchive(item)"
             >
-              <Icon icon="solar:trash-bin-trash-outline" class="history-delete-icon" aria-hidden="true" />
+              <Icon icon="fa6-solid:trash-can" class="history-delete-icon" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -70,7 +70,7 @@
             @click="openSettingsModal"
             :style="{ justifyContent: isSidebarCollapsed ? 'center' : 'flex-start', padding: isSidebarCollapsed ? '12px' : '12px 14px' }"
           >
-            <Icon icon="solar:settings-outline" class="action-icon" aria-hidden="true" :style="{ margin: isSidebarCollapsed ? '0' : '' }" />
+            <Icon icon="fa6-solid:gear" class="action-icon" aria-hidden="true" :style="{ margin: isSidebarCollapsed ? '0' : '' }" />
             <span v-show="!isSidebarCollapsed">设置与帮助</span>
           </button>
         </div>
@@ -91,15 +91,16 @@
             ref="brandRef"
             @click="goHome"
           >
-            <span class="brand-dot"></span>
-            <span class="brand-text">
-              <span class="brand-title">ditapp</span>
-              <span class="brand-subtitle">AI Studio</span>
-            </span>
+            <img
+              class="brand-name"
+              :class="{ light: activeTheme !== 'dark' }"
+              :src="brandNameWhite"
+              alt="见筑"
+            />
           </button>
 
           <div class="title-block" v-if="showBackBtn && !isCommunityRoute">
-            <p class="title-sub">ditapp workspace</p>
+            <p class="title-sub">见筑 workspace</p>
             <h2 class="title-main">{{ pageTitle }}</h2>
           </div>
         </div>
@@ -115,11 +116,11 @@
               title="建模抽屉"
               @click="toggleModelDrawer"
             >
-              <Icon icon="solar:widget-5-outline" class="widget-icon" />
+              <Icon icon="fa6-solid:cubes" class="widget-icon" />
             </button>
           </template>
           <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
-            <Icon icon="solar:user-circle-outline" class="avatar-icon" />
+            <Icon icon="fa6-solid:circle-user" class="avatar-icon" />
           </button>
         </div>
       </header>
@@ -151,7 +152,7 @@
                 <button v-if="imageFile" class="tool-btn ghost" @click="clearImage">移除</button>
               </template>
               <button class="send-btn" aria-label="发送生成请求" @click="generateFromComposer">
-                <Icon icon="solar:arrow-up-linear" class="send-icon" />
+                <Icon icon="fa6-solid:arrow-up" class="send-icon" />
               </button>
             </div>
           </div>
@@ -326,6 +327,7 @@ import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
 import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
+import brandNameWhite from '../ditlogos/name_front_line.svg';
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
@@ -414,7 +416,7 @@ const routeTitleMap = {
 };
 const pageTitle = computed(() => {
   if (route.path.startsWith('/workshop/')) return '工作台';
-  return routeTitleMap[route.path] || 'ditapp';
+  return routeTitleMap[route.path] || '见筑';
 });
 const layoutVars = computed(() => ({
   '--left-panel-width': leftPanelWidth.value,
@@ -423,11 +425,7 @@ const layoutVars = computed(() => ({
 
 const isStandaloneRoute = computed(() => Boolean(route.meta && route.meta.standalone));
 const showBackBtn = computed(() => route.path !== '/' && !isCommunityRoute.value);
-const communityIcon = computed(() =>
-  route.path.startsWith('/community')
-    ? 'solar:users-group-rounded-bold'
-    : 'solar:users-group-rounded-outline'
-);
+const communityIcon = computed(() => 'fa6-solid:users');
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -1097,15 +1095,6 @@ nextTick(() => resizeComposer());
   background: rgba(14, 14, 14, 0.92);
 }
 
-.app-shell.theme-dark .brand-dot {
-  background: #e6edf6;
-  box-shadow: 0 0 0 5px rgba(230, 237, 246, 0.12);
-}
-
-.app-shell.theme-dark .brand-title {
-  color: #e6edf6;
-}
-
 .app-shell.theme-dark .collapse-btn {
   border-color: #334055;
   background: #2a2a2a;
@@ -1186,33 +1175,18 @@ nextTick(() => resizeComposer());
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
   padding: 6px 8px;
   text-align: left;
 }
 
-.brand-dot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(120deg, #3a8bff, #77b2ff);
-  box-shadow: 0 0 0 0 rgba(58, 139, 255, 0.14);
+.brand-name {
+  display: block;
+  width: auto;
+  height: 24px;
 }
 
-.brand-text {
-  display: inline-flex;
-  flex-direction: column;
-}
-
-.brand-title {
-  margin: 0;
-  font-size: 18px;
-}
-
-.brand-subtitle {
-  margin: 2px 0 0;
-  font-size: 12px;
-  color: #64748b;
+.brand-name.light {
+  filter: brightness(0) saturate(100%);
 }
 
 .collapse-btn {

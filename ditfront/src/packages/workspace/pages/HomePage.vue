@@ -2,14 +2,7 @@
   <section ref="homeRef" class="home-wrap" :class="{ 'has-chat': !showWelcome }">
     <template v-if="showWelcome">
       <div class="welcome-card">
-        <Vue3Lottie
-          class="welcome-lottie js-welcome-item"
-          :animationData="welcomeAnimation"
-          :height="48"
-          :width="48"
-          :loop="false"
-          :autoPlay="true"
-        />
+        <img class="welcome-logo js-welcome-item" :src="welcomeLogoSrc" alt="见筑 Logo" />
         <h2 class="js-welcome-item">今天想创作什么？</h2>
         <p class="desc js-welcome-item">上传图片以获得效果</p>
       </div>
@@ -36,7 +29,7 @@
           </div>
           <div v-if="loadingTaskExists" class="bubble-item bubble-item-loading">
             <div class="bubble loading">
-              <Icon icon="solar:refresh-circle-outline" class="bubble-loading-icon" />
+              <Icon icon="fa6-solid:arrows-rotate" class="bubble-loading-icon" />
               <span>正在生成中...</span>
             </div>
           </div>
@@ -51,12 +44,12 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
-import { Vue3Lottie } from 'vue3-lottie';
 import { gsap } from 'gsap';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
-import welcomeAnimation from '@/shared/assets/AnimationIndex.json';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
+import welcomeLogoBlack from '../../../../ditlogos/Blank_transparent_black_logo.svg';
+import welcomeLogoWhite from '../../../../ditlogos/Blank_transparent_white_logo.svg';
 
 const FORCE_WELCOME_ONCE_KEY = 'ditapp_force_welcome_once';
 const FORCE_WELCOME_BASELINE_KEY = 'ditapp_force_welcome_baseline';
@@ -68,9 +61,12 @@ const forceWelcome = ref(false);
 const forceWelcomeBaseline = ref(0);
 const homeRef = ref(null);
 const prefersReducedMotion = useReducedMotion();
+const isDarkTheme = ref(false);
 let welcomeCtx = null;
+let shellObserver = null;
 const currentArchive = computed(() => taskStore.currentArchive);
 const animatedBubbleKeys = ref([]);
+const welcomeLogoSrc = computed(() => (isDarkTheme.value ? welcomeLogoWhite : welcomeLogoBlack));
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -156,6 +152,11 @@ const runWelcomeAnimation = () => {
   }, homeRef.value);
 };
 
+const syncThemeMode = () => {
+  const shell = homeRef.value?.closest('.app-shell');
+  isDarkTheme.value = Boolean(shell && shell.classList.contains('theme-dark'));
+};
+
 const markBubblesAnimated = (keys) => {
   if (!keys.length) return;
   animatedBubbleKeys.value = [...new Set([...animatedBubbleKeys.value, ...keys])];
@@ -207,6 +208,13 @@ onMounted(() => {
   }
 
   nextTick(() => {
+    syncThemeMode();
+    const shell = homeRef.value?.closest('.app-shell');
+    if (shell) {
+      shellObserver = new MutationObserver(syncThemeMode);
+      shellObserver.observe(shell, { attributes: true, attributeFilter: ['class'] });
+    }
+
     runWelcomeAnimation();
     runBubbleAnimation();
   });
@@ -216,6 +224,10 @@ onBeforeUnmount(() => {
   if (welcomeCtx) {
     welcomeCtx.revert();
     welcomeCtx = null;
+  }
+  if (shellObserver) {
+    shellObserver.disconnect();
+    shellObserver = null;
   }
 });
 
@@ -285,12 +297,15 @@ watch(
   text-align: left;
 }
 
-.welcome-lottie {
+.welcome-logo {
   position: relative;
-  margin-left: -5px;
+  margin-left: 0;
   filter: drop-shadow(0 6px 12px rgba(72, 161, 255, 0.35));
   pointer-events: none;
   opacity: 0.95;
+  width: clamp(64px, 7vw, 96px);
+  height: auto;
+  display: block;
 }
 
 h2 {
