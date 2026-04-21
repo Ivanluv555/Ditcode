@@ -70,19 +70,38 @@ export class WebGLEngine {
     let material = null;
 
     if (textureUrl) {
+      // helper: convert dataURL to Blob
+      const dataUrlToBlob = (dataUrl) => {
+        const parts = dataUrl.split(',');
+        const header = parts[0] || '';
+        const matches = header.match(/:(.*?);/);
+        const mime = matches ? matches[1] : 'image/png';
+        const bstr = atob(parts[1] || '');
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
+        return new Blob([u8arr], { type: mime });
+      };
+
       try {
         console.log('[Engine] onCrossFade loading texture:', textureUrl?.slice?.(0,80) ? textureUrl.slice(0,80) + '...' : textureUrl);
-        // Try using createImageBitmap path first to offload decode from main thread
+        // Try using createImageBitmap path first to offload decode from main thread when possible
         let texture = null;
         if (typeof createImageBitmap === 'function') {
           try {
-            const resp = await fetch(textureUrl);
-            const blob = await resp.blob();
+            let blob = null;
+            if (textureUrl.startsWith('data:')) {
+              blob = dataUrlToBlob(textureUrl);
+            } else {
+              const resp = await fetch(textureUrl, { mode: 'cors' });
+              if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+              blob = await resp.blob();
+            }
             const imageBitmap = await createImageBitmap(blob);
             texture = new THREE.Texture(imageBitmap);
             texture.needsUpdate = true;
           } catch (e) {
-            console.warn('[Engine] createImageBitmap failed, falling back to TextureLoader:', e);
+            console.warn('[Engine] createImageBitmap path failed, falling back to TextureLoader:', e);
             texture = await new THREE.TextureLoader().loadAsync(textureUrl);
           }
         } else {
@@ -90,13 +109,16 @@ export class WebGLEngine {
         }
 
         if (texture) {
-          // Ensure correct color space / encoding for sRGB images
+          // Ensure correct color space for sRGB images
           if ('colorSpace' in texture) {
             texture.colorSpace = THREE.SRGBColorSpace;
           }
-          // Prefer linear filter and skip mipmaps for large single images to reduce upload time
+          // Fix orientation and reduce GPU work for large single panorama
+          texture.flipY = false;
           texture.minFilter = THREE.LinearFilter;
           texture.generateMipmaps = false;
+          texture.needsUpdate = true;
+
           console.log('[Engine] texture loaded', texture.image?.width, 'x', texture.image?.height, 'rendererMem:', this.renderer?.info?.memory);
           material = new THREE.MeshBasicMaterial({
             map: texture,
