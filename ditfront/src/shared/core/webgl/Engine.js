@@ -126,7 +126,7 @@ export class WebGLEngine {
             opacity: 0,
             depthWrite: false,
             depthTest: false,
-            side: THREE.FrontSide
+            side: THREE.DoubleSide
           });
         }
       } catch (error) {
@@ -141,7 +141,7 @@ export class WebGLEngine {
         opacity: 0,
         depthWrite: false,
         depthTest: false,
-        side: THREE.FrontSide
+        side: THREE.DoubleSide
       });
     }
 
@@ -149,6 +149,7 @@ export class WebGLEngine {
     newSphere.renderOrder = 1000;
     // Prevent frustum culling for large inward-facing sphere
     newSphere.frustumCulled = false;
+    console.log('[Engine] adding newSphere to scene');
     this.scene.add(newSphere);
     new TWEEN.Tween(material)
       .to({ opacity: 1 }, 1500)
@@ -166,6 +167,7 @@ export class WebGLEngine {
         this.rootSphere = newSphere;
       })
       .start();
+      console.log('[Engine] started fade tween');
   }
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
