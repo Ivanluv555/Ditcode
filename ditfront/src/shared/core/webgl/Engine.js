@@ -126,7 +126,7 @@ export class WebGLEngine {
             opacity: 0,
             depthWrite: false,
             depthTest: false,
-            side: THREE.BackSide
+            side: THREE.FrontSide
           });
         }
       } catch (error) {
@@ -141,7 +141,7 @@ export class WebGLEngine {
         opacity: 0,
         depthWrite: false,
         depthTest: false,
-        side: THREE.BackSide
+        side: THREE.FrontSide
       });
     }
 
