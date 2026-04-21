@@ -53,6 +53,17 @@ export class WebGLEngine {
   }
   async onCrossFade(event) {
     if (!this.rootSphere) return;
+    if (this.maskSphere) {
+      this.scene.remove(this.maskSphere);
+      this.maskSphere.geometry?.dispose();
+      if (Array.isArray(this.maskSphere.material)) {
+        this.maskSphere.material.forEach((material) => material?.dispose && material.dispose());
+      } else if (this.maskSphere.material) {
+        this.maskSphere.material.dispose();
+      }
+      this.maskSphere = null;
+    }
+
     const geometry = new THREE.SphereGeometry(500, 60, 40);
     geometry.scale(-1, 1, 1);
     const textureUrl = event?.detail?.imagePreview || '';
@@ -60,14 +71,42 @@ export class WebGLEngine {
 
     if (textureUrl) {
       try {
-        const texture = await new THREE.TextureLoader().loadAsync(textureUrl);
-        texture.colorSpace = THREE.SRGBColorSpace;
-        material = new THREE.MeshBasicMaterial({
-          map: texture,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false
-        });
+        console.log('[Engine] onCrossFade loading texture:', textureUrl?.slice?.(0,80) ? textureUrl.slice(0,80) + '...' : textureUrl);
+        // Try using createImageBitmap path first to offload decode from main thread
+        let texture = null;
+        if (typeof createImageBitmap === 'function') {
+          try {
+            const resp = await fetch(textureUrl);
+            const blob = await resp.blob();
+            const imageBitmap = await createImageBitmap(blob);
+            texture = new THREE.Texture(imageBitmap);
+            texture.needsUpdate = true;
+          } catch (e) {
+            console.warn('[Engine] createImageBitmap failed, falling back to TextureLoader:', e);
+            texture = await new THREE.TextureLoader().loadAsync(textureUrl);
+          }
+        } else {
+          texture = await new THREE.TextureLoader().loadAsync(textureUrl);
+        }
+
+        if (texture) {
+          // Ensure correct color space / encoding for sRGB images
+          if ('colorSpace' in texture) {
+            texture.colorSpace = THREE.SRGBColorSpace;
+          }
+          // Prefer linear filter and skip mipmaps for large single images to reduce upload time
+          texture.minFilter = THREE.LinearFilter;
+          texture.generateMipmaps = false;
+          console.log('[Engine] texture loaded', texture.image?.width, 'x', texture.image?.height, 'rendererMem:', this.renderer?.info?.memory);
+          material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false,
+            depthTest: false,
+            side: THREE.BackSide
+          });
+        }
       } catch (error) {
         console.warn('Failed to load panorama texture:', error);
       }
@@ -78,12 +117,16 @@ export class WebGLEngine {
         color: 0x00ffaa,
         transparent: true,
         opacity: 0,
-        depthWrite: false
+        depthWrite: false,
+        depthTest: false,
+        side: THREE.BackSide
       });
     }
 
     const newSphere = new THREE.Mesh(geometry, material);
-    newSphere.renderOrder = 1;
+    newSphere.renderOrder = 1000;
+    // Prevent frustum culling for large inward-facing sphere
+    newSphere.frustumCulled = false;
     this.scene.add(newSphere);
     new TWEEN.Tween(material)
       .to({ opacity: 1 }, 1500)
