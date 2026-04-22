@@ -34,14 +34,15 @@ const showMockMask = (engine) => {
     }
   }
   const maskGeo = new THREE.SphereGeometry(500, 60, 40);
-  maskGeo.scale(-1, 1, 1);
   const maskMat = new THREE.MeshBasicMaterial({ 
     color: 0xff00ff, 
     transparent: true, 
     opacity: 0.5,
-    depthWrite: false 
+    depthWrite: true,
+    side: THREE.BackSide
   });
   engine.maskSphere = new THREE.Mesh(maskGeo, maskMat);
+  // slight scale to avoid z-fighting with the main sphere
   engine.maskSphere.scale.set(1.001, 1.001, 1.001);
   engine.scene.add(engine.maskSphere);
   engine.needsUpdate = true;

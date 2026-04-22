@@ -30,8 +30,11 @@ export class WebGLEngine {
     this.camera.position.set(0, 0, 0.1);
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
+    this.controls.dampingFactor = 0.05;
     this.controls.enablePan = false;
-    this.controls.enableZoom = false;
+    this.controls.enableZoom = true;
+    this.controls.minDistance = 0;
+    this.controls.maxDistance = 100;
     this.controls.addEventListener('change', this.onControlsChange);
     window.addEventListener('resize', this.onResize);
     window.addEventListener('cross-fade-trigger', this.onCrossFadeTrigger);
@@ -40,10 +43,11 @@ export class WebGLEngine {
   }
   async initScene() {
     const geometry = new THREE.SphereGeometry(500, 60, 40);
-    geometry.scale(-1, 1, 1);
-    const material = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true });
+    const material = new THREE.MeshBasicMaterial({ color: 0x333333, wireframe: true, side: THREE.BackSide });
     this.rootSphere = new THREE.Mesh(geometry, material);
     this.scene.add(this.rootSphere);
+    // set a dark background as a fallback when panorama not loaded
+    this.scene.background = new THREE.Color(0x111111);
     this.needsUpdate = true;
     try {
       // Texture loading placeholder
@@ -65,7 +69,6 @@ export class WebGLEngine {
     }
 
     const geometry = new THREE.SphereGeometry(500, 60, 40);
-    geometry.scale(-1, 1, 1);
     const textureUrl = event?.detail?.imagePreview || '';
     let material = null;
 
@@ -113,8 +116,8 @@ export class WebGLEngine {
           if ('colorSpace' in texture) {
             texture.colorSpace = THREE.SRGBColorSpace;
           }
-          // Fix orientation and reduce GPU work for large single panorama
-          texture.flipY = false;
+          // Keep default flipY (true) to match standard image orientation
+          texture.flipY = true;
           texture.minFilter = THREE.LinearFilter;
           texture.generateMipmaps = false;
           texture.needsUpdate = true;
@@ -124,9 +127,9 @@ export class WebGLEngine {
             map: texture,
             transparent: true,
             opacity: 0,
-            depthWrite: false,
-            depthTest: false,
-            side: THREE.DoubleSide
+            depthWrite: true,
+            depthTest: true,
+            side: THREE.BackSide
           });
         }
       } catch (error) {
@@ -139,9 +142,9 @@ export class WebGLEngine {
         color: 0x00ffaa,
         transparent: true,
         opacity: 0,
-        depthWrite: false,
-        depthTest: false,
-        side: THREE.DoubleSide
+        depthWrite: true,
+        depthTest: true,
+        side: THREE.BackSide
       });
     }
 
@@ -180,10 +183,8 @@ export class WebGLEngine {
       this.animationFrameId = requestAnimationFrame(loop);
       TWEEN.update(time);
       this.controls.update();
-      if (this.needsUpdate) {
-        this.renderer.render(this.scene, this.camera);
-        this.needsUpdate = false;
-      }
+      // Render every frame (matching demo behaviour) to avoid missed renders
+      this.renderer.render(this.scene, this.camera);
     };
     loop(performance.now());
   }
