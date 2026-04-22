@@ -1,3 +1,12 @@
+<!--
+  AssetCard.vue
+  ---------------
+  功能：展示单个封面卡片（通常在社区或我的内容页面中使用），包括封面图片、作者、标签和 remix 计数。
+
+  备注给非前端人员：
+  - 该组件把封面图显示为背景图片，并在卡片点击时导航到工作区并打开指定的 archive（通过路由 query）。
+  - 使用了 useReducedMotion Hook 来尊重用户的动画偏好（减少运动）。
+-->
 <template>
   <div ref="cardRef" class="asset-card" :style="cardStyle" @click="onClick">
     <div class="cover-wrapper">
