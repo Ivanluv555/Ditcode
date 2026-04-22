@@ -1061,6 +1061,7 @@ watch(
 nextTick(() => resizeComposer());
 </script>
 
+<style scoped>
 /*
  * App.vue styles
  * ----------------
@@ -1075,7 +1076,6 @@ nextTick(() => resizeComposer());
  * - 主题切换：变量通过 data-theme="dark" 的 :root 中定义不同配色。切换主题时只需更新 document.documentElement.setAttribute('data-theme', 'dark'|'light')。
  * - 可访问性提示：注意在修改颜色对比时保持充足对比度，避免影响弱视用户。
  */
-<style scoped>
 .app-shell {
   --left-panel-width: 280px;
   --right-panel-width: 0px;
