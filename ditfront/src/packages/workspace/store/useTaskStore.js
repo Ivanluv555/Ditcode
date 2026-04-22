@@ -59,6 +59,7 @@ const normalizeMessage = (message) => ({
   id: message.id || `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   role: message.role || 'user',
   text: message.text || '',
+  imagePreview: message.imagePreview || '',
   createdAt: message.createdAt || Date.now()
 });
 
@@ -66,7 +67,7 @@ const normalizeArchive = (archive = {}, idFallback = '') => {
   const createdAt = archive.createdAt || Date.now();
   const tasks = Array.isArray(archive.tasks) ? archive.tasks.map(normalizeTask) : [];
   const messages = Array.isArray(archive.messages)
-    ? archive.messages.map(normalizeMessage).filter((item) => item.text)
+    ? archive.messages.map(normalizeMessage).filter((item) => item.text || item.imagePreview)
     : [];
 
   const modelAsset = archive.modelAsset ? normalizeModelAsset(archive.modelAsset) : null;
@@ -520,7 +521,8 @@ export const useTaskStore = defineStore('task', {
       await this.syncWorkspace();
     },
     appendMessage(text, options = {}) {
-      if (!text) return;
+      // allow empty text when imagePreview is provided
+      if (!text && !options.imagePreview) return;
 
       if (!this.currentArchive) {
         this.createArchive({ title: '新工作' });
@@ -532,14 +534,15 @@ export const useTaskStore = defineStore('task', {
       archive.messages.push(
         normalizeMessage({
           role: options.role || 'user',
-          text,
+          text: text || '',
+          imagePreview: options.imagePreview || '',
           createdAt: options.createdAt || Date.now()
         })
       );
 
       archive.updatedAt = Date.now();
       if (!archive.title || archive.title === '新工作') {
-        archive.title = text.slice(0, 24) || archive.title;
+        archive.title = (text || options.imagePreview || '').toString().slice(0, 24) || archive.title;
       }
 
       if (!options.silentSync) {
@@ -547,6 +550,7 @@ export const useTaskStore = defineStore('task', {
         void this.syncWorkspace();
       }
     },
+
     addTask(task) {
       if (!task || !task.id) return;
       if (!this.currentArchive) {
@@ -660,6 +664,16 @@ export const useTaskStore = defineStore('task', {
           console.warn('Panorama caching failed:', error);
         }
       })();
+
+      // push an assistant message pointing to the returned panorama so UI can render it as a left bubble
+      try {
+        const previewUrl = archive.modelAsset?.localPreview || archive.modelAsset?.imagePreview || '';
+        if (previewUrl) {
+          this.appendMessage('', { role: 'assistant', createdAt: archive.modelAsset.updatedAt, imagePreview: previewUrl });
+        }
+      } catch (e) {
+        console.warn('Failed to append assistant message for modelAsset:', e);
+      }
 
       if (archive.sourceCommunityId) {
         void requestCommunityApi('/api/community/remix', {

@@ -288,6 +288,25 @@
     window.onload = () => {
         const engine = new PanoramaEngine();
 
+        // If an image is provided via query param, load it immediately
+        try {
+            const params = new URLSearchParams(window.location.search || '');
+            const img = params.get('image');
+            if (img) {
+                // decodeURIComponent in case callers encoded the URL
+                const decoded = decodeURIComponent(img);
+                engine.loadPanorama(decoded).then(() => {
+                    // best-effort: revoke if it was a blob URL (caller should manage lifecycle)
+                    // do not revoke remote http(s) URLs
+                    if (decoded.startsWith('blob:')) {
+                        setTimeout(() => URL.revokeObjectURL(decoded), 2000);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('Failed to load image from query param:', e);
+        }
+
         // 处理文件上传
         const fileInput = document.getElementById('file-input');
         fileInput.addEventListener('change', (event) => {

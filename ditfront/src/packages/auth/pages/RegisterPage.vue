@@ -59,7 +59,7 @@
       <div ref="scene2PinRef" class="scene-stage">
         <div ref="featuresLayoutRef" class="features-layout">
           <article class="scene-copy">
-            <h2>从平面图片到室内360全景，核心能力一目了然</h2>
+            <h2>从平面图片<br>到室内360全景<br>核心能力一目了然</h2>
             <p class="scene-desc">理解意图-识别图片-构建思路-模型构建-渲染展示</p>
             <p class="scene-desc">全通路一站式完成，轻松获得作品</p>
 
