@@ -167,6 +167,17 @@ watch(
 );
 </script>
 
+/*
+ * EditorPanel styles
+ * -------------------
+ * 该样式定义编辑面板（右侧或底部）的布局：固定尺寸、圆角、阴影和内部间距。
+ * 关键类说明：
+ * - .editor-panel: 容器定位为 absolute，desktop 上靠右居中垂直显示；移动端通过媒体查询切换到底部 full-width 模式。
+ * - .header / .content: 分别为标题栏和内容区，header 包含生成按钮，content 包含输入框与上传控件。
+ * - .preview img: 限制预览图尺寸，避免面板撑大。
+ *
+ * 注意：使用了全局 CSS 变量（例如 --color-bg-card, --color-border）以便主题切换和统一样式。
+ */
 <style scoped>
 .editor-panel {
   position: absolute;

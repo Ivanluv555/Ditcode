@@ -69,6 +69,15 @@ const handleMouseLeave = () => {
 };
 </script>
 
+/*
+ * TaskPod styles
+ * ----------------
+ * 这个小组件的样式实现了圆形悬浮按钮和展开列表样式。
+ * 说明：
+ * - 默认情况下为圆形小图标（48px），当展开时变为宽面板（250px）并显示任务列表。
+ * - 使用 transition 平滑展开/收起，pod-icon 的旋转动画通过 @keyframes rotate 实现。
+ * - 样式尽量使用组件局部变量和语义类，避免与全局样式冲突（scoped）。
+ */
 <style scoped>
 .task-pod {
   position: absolute;

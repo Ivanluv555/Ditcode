@@ -59,6 +59,17 @@ const openViewer = (imageUrl) => {
 };
 </script>
 
+/*
+ * WorkshopPage styles
+ * --------------------
+ * 该样式定义消息流页（聊天式布局）：
+ * - .workshop-container: 整体容器，使用 padding 保持内容与侧边栏间距。
+ * - .messages-list: 垂直堆叠的消息列，每条消息通过 .message-row 左右对齐展示。
+ * - .bubble: 气泡样式，限制 max-width 为 50%（使图片气泡不超过主面板一半宽度），并设置不同背景区分用户/助手。
+ * - .ui-layer: 叠加层用于放置交互面板（TaskPod），通过 pointer-events 控制可点击性。
+ *
+ * 可维护建议：如需支持更多消息类型（视频、文件），保持消息容器结构并为新类型增加单独类名与样式。
+ */
 <style scoped>
 .workshop-container {
   width: 100%;

@@ -1,3 +1,16 @@
+/*
+ * global.css
+ * -----------
+ * 全局样式与主题变量（CSS Custom Properties）集合。
+ * 本文件定义：
+ * 1) 根变量（:root）提供颜色、间距、阴影、滚动条样式等全局设计值，便于主题切换和统一维护。
+ * 2) data-theme="dark" 的变量覆盖实现暗色主题。
+ * 3) 基础重置样式（body, html）和 scrollbar 定义。
+ *
+ * 面向初学者的使用说明：
+ * - 在组件样式中优先使用变量（例如 var(--color-bg-card)）而不是写死颜色，这样切换主题或调整配色会更简单。
+ * - 如果需要新增颜色或语义化变量（例如 --color-info），在 :root 中添加并为暗色主题提供对应值。
+ */
 /* reset */
 body, html {
   margin: 0; padding: 0;

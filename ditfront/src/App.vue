@@ -1061,6 +1061,20 @@ watch(
 nextTick(() => resizeComposer());
 </script>
 
+/*
+ * App.vue styles
+ * ----------------
+ * 说明（面向新手）：
+ * - 这个 <style scoped> 块定义了应用整体布局与视觉主题的 CSS。
+ * - 使用了 CSS 自定义属性（variables），例如 --left-panel-width, --color-bg-page 等，这些变量能在不同主题间被切换（见 :root[data-theme="dark"])。
+ * - 主要区域说明：
+ *   .app-shell: 根容器，定义左右面板宽度变量并控制整体高度和背景。
+ *   .sidebar: 左侧导航栏，包含历史、操作按钮等。
+ *   .content: 中央内容区，包含顶部固定的 topbar 和 router-view 渲染的页面。
+ *   .model-drawer: 右侧抽屉（旧的模型查看区），通过 CSS 变量 --right-panel-width 控制宽度。
+ * - 主题切换：变量通过 data-theme="dark" 的 :root 中定义不同配色。切换主题时只需更新 document.documentElement.setAttribute('data-theme', 'dark'|'light')。
+ * - 可访问性提示：注意在修改颜色对比时保持充足对比度，避免影响弱视用户。
+ */
 <style scoped>
 .app-shell {
   --left-panel-width: 280px;

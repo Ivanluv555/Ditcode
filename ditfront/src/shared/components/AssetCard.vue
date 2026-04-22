@@ -78,6 +78,15 @@ onMounted(() => {
 });
 </script>
 
+/*
+ * AssetCard styles
+ * -----------------
+ * 卡片组件的视觉样式：圆角、背景模糊、封面区域和信息区。
+ * 关键点：
+ * - cover-wrapper 采用 padding-bottom 技巧保持固定宽高比（16:9 或 56.25%）；
+ * - hover 效果通过 transform 与 box-shadow 增强交互感；
+ * - remix-badge 放置在封面右上角以提示 remix 次数。
+ */
 <style scoped>
 .asset-card {
   backdrop-filter: blur(10px);
