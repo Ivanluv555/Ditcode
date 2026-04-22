@@ -706,8 +706,17 @@ export const useTaskStore = defineStore('task', {
             })
           });
 
+        // Debug logging to trace backend response and task mapping
+        try { console.debug('[taskStore] /api/model/generate response:', result); } catch(e) {}
+
         // Prefer server-provided task id when available
         const returnedTaskId = result?.taskId || result?.id || taskId;
+
+        // Log current archive and tasks before applying updates
+        try {
+          const ca = this.currentArchive;
+          console.debug('[taskStore] currentArchive id before update:', ca?.id, 'tasks:', ca?.tasks?.map?.(t => ({ id: t.id, status: t.status })) );
+        } catch(e) {}
 
         // Support multiple possible response fields for the image (imagePreview, imageBase64, url...)
         const rawPreview = result?.imagePreview || result?.imageBase64 || result?.image || result?.image_url || result?.url || result?.data || result?.base64 || '';
