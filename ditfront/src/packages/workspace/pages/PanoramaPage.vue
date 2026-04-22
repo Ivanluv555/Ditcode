@@ -5,7 +5,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { WebGLEngine } from '@/shared/core/webgl/Engine';
 import { disposeScene } from '@/shared/core/webgl/GC';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
@@ -16,10 +16,11 @@ let objectUrl = null;
 const taskStore = useTaskStore();
 const asset = computed(() => taskStore.currentArchive?.modelAsset || null);
 
-const loadFromCacheOrPreview = async () => {
-  if (!asset.value) return;
-  const assetId = asset.value.id;
-  const cachedKey = asset.value.cachedLocal || localStorage.getItem('dit-panorama-cache:' + assetId) || null;
+const loadFromCacheOrPreview = async (targetAsset) => {
+  const useAsset = targetAsset || asset.value;
+  if (!useAsset) return;
+  const assetId = useAsset.id;
+  const cachedKey = useAsset.cachedLocal || localStorage.getItem('dit-panorama-cache:' + assetId) || null;
   if (cachedKey && 'caches' in window) {
     try {
       const cache = await caches.open('dit-panorama-cache');
@@ -27,7 +28,7 @@ const loadFromCacheOrPreview = async () => {
       if (resp) {
         const blob = await resp.blob();
         objectUrl = URL.createObjectURL(blob);
-        engine.onCrossFade({ detail: { imagePreview: objectUrl } });
+        if (engine) engine.onCrossFade({ detail: { imagePreview: objectUrl } });
         return;
       }
     } catch (e) {
@@ -35,8 +36,17 @@ const loadFromCacheOrPreview = async () => {
     }
   }
 
-  if (asset.value.imagePreview) {
-    engine.onCrossFade({ detail: { imagePreview: asset.value.imagePreview } });
+  if (useAsset.imagePreview) {
+    if (engine) engine.onCrossFade({ detail: { imagePreview: useAsset.imagePreview } });
+  }
+};
+
+const onCrossFadeEvent = (ev) => {
+  if (!engine) return;
+  try {
+    engine.onCrossFade(ev);
+  } catch (e) {
+    console.warn('onCrossFadeEvent error', e);
   }
 };
 
@@ -45,10 +55,18 @@ onMounted(() => {
     engine = new WebGLEngine(canvasRef.value);
     engine.start();
     void loadFromCacheOrPreview();
+    window.addEventListener('cross-fade-trigger', onCrossFadeEvent);
   }
 });
 
+watch(asset, (newVal) => {
+  if (!engine) return;
+  if (!newVal) return;
+  void loadFromCacheOrPreview(newVal);
+});
+
 onBeforeUnmount(() => {
+  window.removeEventListener('cross-fade-trigger', onCrossFadeEvent);
   if (engine) {
     engine.stop();
     disposeScene(engine.scene, engine.renderer);

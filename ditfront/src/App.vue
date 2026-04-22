@@ -522,7 +522,7 @@ const generateFromComposer = async () => {
     // open panorama page to view the generated result (replace right-side drawer behavior)
     isSidebarCollapsed.value = true;
     await nextTick();
-    router.push('/panorama');
+    await router.push('/panorama');
     const event = new CustomEvent('cross-fade-trigger', {
       detail: {
         id: result.taskId,
