@@ -19,6 +19,17 @@ const asset = computed(() => taskStore.currentArchive?.modelAsset || null);
 const loadFromCacheOrPreview = async (targetAsset) => {
   const useAsset = targetAsset || asset.value;
   if (!useAsset) return;
+
+  // Prefer ephemeral local preview (object URL) created at generation time
+  if (useAsset.localPreview) {
+    try {
+      if (engine) engine.onCrossFade({ detail: { imagePreview: useAsset.localPreview } });
+      return;
+    } catch (e) {
+      console.warn('Failed to use localPreview:', e);
+    }
+  }
+
   const assetId = useAsset.id;
   const cachedKey = useAsset.cachedLocal || localStorage.getItem('dit-panorama-cache:' + assetId) || null;
   if (cachedKey && 'caches' in window) {

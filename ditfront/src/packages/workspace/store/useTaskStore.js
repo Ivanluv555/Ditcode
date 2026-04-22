@@ -49,6 +49,8 @@ const normalizeModelAsset = (record) => ({
   id: record.id || `asset_${Date.now()}`,
   prompt: record.prompt || '',
   imagePreview: record.imagePreview || '',
+  // localPreview stores an in-memory object URL (blob:) when available for immediate rendering
+  localPreview: record.localPreview || record.localUrl || '',
   createdAt: record.createdAt || Date.now(),
   updatedAt: record.updatedAt || record.createdAt || Date.now()
 });
@@ -732,6 +734,44 @@ export const useTaskStore = defineStore('task', {
           }
         }
 
+        // Create an in-memory object URL for immediate rendering (no persistent cache)
+        let localPreview = '';
+        const dataUrlToBlob = (dataUrl) => {
+          const parts = dataUrl.split(',');
+          const header = parts[0] || '';
+          const matches = header.match(/:(.*?);/);
+          const m = matches ? matches[1] : 'image/png';
+          const bstr = atob(parts[1] || '');
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) u8arr[n] = bstr.charCodeAt(n);
+          return new Blob([u8arr], { type: m });
+        };
+
+        try {
+          if (finalPreview) {
+            if (finalPreview.startsWith('data:')) {
+              const blob = dataUrlToBlob(finalPreview);
+              localPreview = URL.createObjectURL(blob);
+            } else if (finalPreview.startsWith('blob:')) {
+              localPreview = finalPreview;
+            } else if (finalPreview.startsWith('http') || finalPreview.startsWith('/')) {
+              try {
+                const resp = await fetch(finalPreview, { mode: 'cors' });
+                if (resp.ok) {
+                  const blob = await resp.blob();
+                  localPreview = URL.createObjectURL(blob);
+                }
+              } catch (e) {
+                // ignore network errors for localPreview, fallback to using finalPreview directly
+                console.warn('Could not fetch remote preview for local object URL:', e);
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to create local object URL for preview:', e);
+        }
+
         // If backend returned a different id, update archive task id to keep consistency
         const archive = this.currentArchive;
         if (archive && returnedTaskId !== taskId) {
@@ -742,11 +782,12 @@ export const useTaskStore = defineStore('task', {
         // Mark task as completed
         this.updateTask(returnedTaskId, { status: 'success', progress: 100, updatedAt: Date.now() });
 
-        // Add asset record using the returned id
+        // Add asset record using the returned id and include localPreview for immediate rendering
         this.addAssetRecord({
           id: returnedTaskId,
           prompt: normalizedPrompt,
           imagePreview: finalPreview,
+          localPreview,
           createdAt: result?.finishedAt || Date.now(),
           updatedAt: result?.finishedAt || Date.now()
         });
