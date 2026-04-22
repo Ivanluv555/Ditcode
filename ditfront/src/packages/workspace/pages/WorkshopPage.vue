@@ -1,3 +1,18 @@
+<!--
+  WorkshopPage.vue
+  -------------------
+  功能：工作区主页面，采用“聊天气泡”样式展示交互记录（用户提示在右侧气泡，后端生成的图片在左侧气泡）。
+
+  对非前端读者说明：
+  - messages 列表由 store 提供（taskStore.currentArchiveMessages），页面只负责遍历并渲染这些消息。
+  - 左侧（assistant）气泡可包含图片和“在查看器中打开”按钮；右侧（user）气泡只显示用户输入文本。
+
+  UI 设计要点：
+  - 图片气泡宽度限制为主面板的一半，避免占满全文区域，阅读体验更像聊天应用（例如 Gemini）。
+  - 点击“在查看器中打开”会导航到 /viewer 并将图片 URL 放入 query，查看器通过 iframe 加载 demo.html 进行 Three.js 渲染（如适用）。
+
+  可扩展：可为图片气泡添加下载、分享或放大预览等操作。
+-->
 <template>
   <div class="workshop-container">
     <div class="messages-wrap">

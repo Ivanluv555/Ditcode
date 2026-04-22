@@ -1,3 +1,19 @@
+<!--
+  TaskPod.vue
+  ----------------
+  功能说明：页面右上角的小浮动任务面板，展示当前正在运行或排队的生成任务。点击/悬停可以展开任务详情列表。
+
+  给初学者的直观理解：
+  - 该组件只负责从 store（useTaskStore）读取任务并展示进度；组件自身不启动任务。
+  - previewMode 用于在只读演示场景下替换真实任务数据。
+
+  结构与行为：
+  - pod-icon：圆形图标，当有任务时显示旋转图标提示处理中；否则显示对号。
+  - task-list：展开时显示任务条目（状态 + 进度）。
+
+  可扩展点：
+  - 可在任务项添加取消/查看按钮，或增加更详细的错误信息提示。
+-->
 <template>
   <div class="task-pod" :class="{ expanded }" @mouseenter="handleMouseEnter" @mouseleave="handleMouseLeave">
     <div class="pod-icon">

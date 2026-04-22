@@ -1,3 +1,20 @@
+<!--
+  EditorPanel.vue
+  ----------------
+  功能：一个紧凑的侧边编辑器，用于输入 Prompt（文本）并可选择参考图片，然后触发模型生成。
+
+  面向非前端开发者的说明：
+  - template 部分是视图（HTML 结构），由 Vue 渲染引擎结合下面的脚本数据来展示内容。
+  - script setup 部分定义了组件的「数据」（变量）和「方法」(函数)，这些变量在 template 中直接使用。
+  - 样式（style）定义了组件的外观与布局。
+
+  主要职责：
+  1. 接收用户文本与图片；
+  2. 创建任务并通知 store（useTaskStore）以开始模型生成；
+  3. 在生成完成后导航到查看器页面以展示结果。
+
+  小提示：在文件中查找 generateNew 函数可以看到发送生成请求并导航到 viewer 的核心逻辑。
+-->
 <template>
   <div class="editor-panel" :class="{ 'is-mobile': isMobile }">
     <div class="header">

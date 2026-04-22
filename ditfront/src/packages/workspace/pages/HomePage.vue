@@ -1,3 +1,12 @@
+<!--
+  HomePage.vue
+  --------------
+  功能：应用的主页，通常显示欢迎信息、最近工作或快速入口，帮助用户快速开始新创建的工作流。
+
+  初学者理解要点：
+  - Home 页面通常从 store 读取最近的 archive 列表并展示简单的入口（点击可以打开工作区或加载存档）。
+  - 这是用户第一次进入应用时看到的页面，很多引导逻辑会在这里触发（例如欢迎提示）。
+-->
 <template>
   <section ref="homeRef" class="home-wrap" :class="{ 'has-chat': !showWelcome }">
     <template v-if="showWelcome">
