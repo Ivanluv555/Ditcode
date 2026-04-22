@@ -110,14 +110,6 @@
             <button class="widget-btn" title="社区" @click="goCommunity">
               <Icon :icon="communityIcon" class="widget-icon" />
             </button>
-            <button
-              class="widget-btn"
-              title="查看全景"
-              @click="goPanorama"
-              :disabled="!hasModelDrawer"
-            >
-              <Icon icon="fa6-solid:cubes" class="widget-icon" />
-            </button>
           </template>
           <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
             <Icon icon="fa6-solid:circle-user" class="avatar-icon" />
@@ -160,7 +152,7 @@
       </Transition>
     </main>
 
-    <aside v-if="showWorkspacePanels && hasModelDrawer && isModelDrawerOpen" class="model-drawer">
+    <aside v-if="false" class="model-drawer">
       <div class="model-drawer-head">
         <span>建模区</span>
         <button class="drawer-close" @click="isModelDrawerOpen = false">关闭</button>
@@ -519,19 +511,10 @@ const generateFromComposer = async () => {
   });
 
   if (result.ok) {
-    // open panorama page to view the generated result (replace right-side drawer behavior)
+    // show generated result (static preview); no Three.js cross-fade
     isSidebarCollapsed.value = true;
     await nextTick();
     await router.push('/panorama');
-    const event = new CustomEvent('cross-fade-trigger', {
-      detail: {
-        id: result.taskId,
-        prompt,
-        hasImage: !!sourceFile,
-        imagePreview: result.imagePreview || ''
-      }
-    });
-    window.dispatchEvent(event);
   }
 
   promptText.value = '';

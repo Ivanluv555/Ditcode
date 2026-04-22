@@ -1,33 +1,35 @@
 <template>
   <div class="panorama-container">
-    <canvas id="webgl-canvas" ref="canvasRef"></canvas>
+    <div class="panorama-inner">
+      <img v-if="imageUrl" :src="imageUrl" alt="全景预览" />
+      <div v-else class="panorama-empty">暂无预览</div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
-import { WebGLEngine } from '@/shared/core/webgl/Engine';
-import { disposeScene } from '@/shared/core/webgl/GC';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 
-const canvasRef = ref(null);
-let engine = null;
-let objectUrl = null;
 const taskStore = useTaskStore();
 const asset = computed(() => taskStore.currentArchive?.modelAsset || null);
+const imageUrl = ref('');
+let objectUrl = null;
 
-const loadFromCacheOrPreview = async (targetAsset) => {
+const setImageFromAsset = async (targetAsset) => {
   const useAsset = targetAsset || asset.value;
-  if (!useAsset) return;
-
-  // Prefer ephemeral local preview (object URL) created at generation time
-  if (useAsset.localPreview) {
-    try {
-      if (engine) engine.onCrossFade({ detail: { imagePreview: useAsset.localPreview } });
-      return;
-    } catch (e) {
-      console.warn('Failed to use localPreview:', e);
+  if (!useAsset) {
+    if (imageUrl.value && imageUrl.value.startsWith('blob:')) {
+      URL.revokeObjectURL(imageUrl.value);
     }
+    imageUrl.value = '';
+    return;
+  }
+
+  // Prefer ephemeral local preview first
+  if (useAsset.localPreview) {
+    imageUrl.value = useAsset.localPreview;
+    return;
   }
 
   const assetId = useAsset.id;
@@ -38,8 +40,12 @@ const loadFromCacheOrPreview = async (targetAsset) => {
       const resp = await cache.match(cachedKey);
       if (resp) {
         const blob = await resp.blob();
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          objectUrl = null;
+        }
         objectUrl = URL.createObjectURL(blob);
-        if (engine) engine.onCrossFade({ detail: { imagePreview: objectUrl } });
+        imageUrl.value = objectUrl;
         return;
       }
     } catch (e) {
@@ -48,41 +54,21 @@ const loadFromCacheOrPreview = async (targetAsset) => {
   }
 
   if (useAsset.imagePreview) {
-    if (engine) engine.onCrossFade({ detail: { imagePreview: useAsset.imagePreview } });
-  }
-};
-
-const onCrossFadeEvent = (ev) => {
-  if (!engine) return;
-  try {
-    engine.onCrossFade(ev);
-  } catch (e) {
-    console.warn('onCrossFadeEvent error', e);
+    imageUrl.value = useAsset.imagePreview;
+  } else {
+    imageUrl.value = '';
   }
 };
 
 onMounted(() => {
-  if (canvasRef.value) {
-    engine = new WebGLEngine(canvasRef.value);
-    engine.start();
-    void loadFromCacheOrPreview();
-    window.addEventListener('cross-fade-trigger', onCrossFadeEvent);
-  }
+  void setImageFromAsset();
 });
 
 watch(asset, (newVal) => {
-  if (!engine) return;
-  if (!newVal) return;
-  void loadFromCacheOrPreview(newVal);
+  void setImageFromAsset(newVal);
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener('cross-fade-trigger', onCrossFadeEvent);
-  if (engine) {
-    engine.stop();
-    disposeScene(engine.scene, engine.renderer);
-    engine = null;
-  }
   if (objectUrl) {
     URL.revokeObjectURL(objectUrl);
     objectUrl = null;
@@ -97,12 +83,23 @@ onBeforeUnmount(() => {
   position: relative;
   overflow: hidden;
   background: var(--color-bg-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-#webgl-canvas {
-  position: absolute;
-  inset: 0;
+.panorama-inner {
   width: 100%;
   height: 100%;
+  position: relative;
+}
+.panorama-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   display: block;
+}
+.panorama-empty {
+  color: var(--color-text-muted);
+  text-align: center;
 }
 </style>

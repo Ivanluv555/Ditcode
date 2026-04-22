@@ -17,7 +17,7 @@
       <div class="scene-stage">
         <div ref="heroGridRef" class="hero-grid">
           <article class="hero-copy">
-            <h1>上传图片文字需求，轻松漫游室内场景</h1>
+            <h1>上传图片文字需求<br>轻松漫游室内场景</h1>
             <p class="scene-desc">
               见筑专注室内设计，把二维平面图与文本描述快速转为 360° 空间方案，打通概念设计流程
             </p>
