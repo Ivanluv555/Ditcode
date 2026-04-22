@@ -309,6 +309,27 @@
 </template>
 
 <script setup>
+/*
+ * App.vue（应用外壳）注释说明
+ * ---------------------------
+ * 这个文件是应用的根组件，负责：
+ *  - 渲染左侧侧边栏（存档/历史）和顶部工具栏
+ *  - 在中间区域通过 <router-view> 渲染不同页面（Home / Workshop / Viewer 等）
+ *  - 提供底部的 composer 用于输入 prompt 并触发模型生成
+ *  - 管理主题、下拉菜单、模态框、以及侧边栏折叠状态等全局 UI 行为
+ *
+ * 对完全不懂前端的人：
+ *  - template 部分类似 HTML，定义了页面的结构
+ *  - script setup 部分定义了页面的数据（变量）和函数（事件处理），这些变量用 ref()/computed() 创建并在模版中直接使用
+ *  - style 部分定义样式（CSS），控制视觉与布局
+ *
+ * 关键点（便于理解的工作流）：
+ *  1) 用户在底部 composer 输入文本并点击发送 -> 调用 generateFromComposer
+ *  2) generateFromComposer 会调用 taskStore.generateModelAsset 向后端请求生成
+ *  3) 成功后页面会导航到 /viewer 并把图片地址作为 query 参数传递，以便在查看器中查看完整全景
+ *
+ * 维护提示：修改路由或导航逻辑时，需同时更新组件中调用 router.push 的所有位置（例如 EditorPanel）。
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';

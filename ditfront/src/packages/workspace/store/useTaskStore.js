@@ -1,3 +1,41 @@
+/*
+ * useTaskStore.js
+ * ----------------
+ * 这个模块是 Pinia 状态管理（store），负责前端「工作区」(workspace) 的核心数据：
+ *  - archives: 项目集合（每个 archive 包含 messages, tasks, modelAsset）
+ *  - tasks: 生成任务（id, status, progress, prompt, imagePreview 等）
+ *  - messages: 聊天样式的记录（role: user|assistant, text, 可选 imagePreview）
+ *  - modelAsset: 最近生成的图像记录
+ *
+ * 设计原则（对初学者的说明）
+ * 1) 把数据放在 store 里，界面组件只负责渲染 store 的状态——这样可以让视图与数据逻辑分离。
+ * 2) 当一个模型生成完成时，先把结果写入 tasks（标记 success），再把 modelAsset 写入 archive，最后通过 appendMessage
+ *    插入一条 assistant 消息（含 imagePreview），这样 UI 只需渲染消息数组即可显示图片气泡。
+ * 3) 支持多种后端返回格式：data:, base64, http URL, Blob, ArrayBuffer 等；模块会统一 normalize 成可直接在 <img> 中使用的字符串（比如 data: 或 http URL）
+ *
+ * 重要函数（学习者入口）
+ * - init(): 从后端拉取工作区并初始化 store
+ * - createArchive(opts): 创建并切换到新 archive
+ * - openArchive(id): 切换到已有 archive
+ * - addTask(task): 在当前 archive 中新增/更新任务（并会把 prompt 自动追加为 user message）
+ * - updateTask(id, updates): 更新任务状态/进度
+ * - addAssetRecord(record): 将生成的图像信息写入 archive.modelAsset，并尝试使用 Cache API 缓存图片，同时会插入一条 assistant image 消息供 UI 渲染
+ * - generateModelAsset({ prompt, imageName, imageBase64 }): 向后端请求生成模型；负责解析后端返回并调用 addAssetRecord
+ *
+ * 垃圾回收与资源管理（注意事项）
+ * - 当创建了 blob: URL（URL.createObjectURL）用于本地预览时，使用完成后必须 URL.revokeObjectURL，防止内存泄漏。
+ * - 缓存使用 Cache API + localStorage key，以便在下次打开同一 asset 时快速读取（避免重复下载）。
+ *
+ * 给初学者的示例：
+ *  1) 发送 prompt 并生成：
+ *     useTaskStore.appendMessage('生成一个简约风客厅');
+ *     await useTaskStore.generateModelAsset({ prompt: '生成一个简约风客厅' });
+ *  2) 在界面读取最新图片：
+ *     useTaskStore.currentArchive.modelAsset.imagePreview
+ *
+ *  本文件中的其他 helper（normalizeXXX）将输入规范化为统一数据结构，修改这些函数会影响 UI 渲染，请谨慎。
+ */
+
 import { defineStore } from 'pinia';
 import { apiRequest } from '@/shared/utils/apiClient';
 import { useAuthStore } from '@/packages/auth/store/useAuthStore';
