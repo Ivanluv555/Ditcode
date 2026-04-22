@@ -111,10 +111,10 @@
               <Icon :icon="communityIcon" class="widget-icon" />
             </button>
             <button
-              v-if="hasModelDrawer && !isHomeWelcomeState"
               class="widget-btn"
-              title="建模抽屉"
-              @click="toggleModelDrawer"
+              title="查看全景"
+              @click="goPanorama"
+              :disabled="!hasModelDrawer"
             >
               <Icon icon="fa6-solid:cubes" class="widget-icon" />
             </button>
@@ -519,8 +519,10 @@ const generateFromComposer = async () => {
   });
 
   if (result.ok) {
-    isModelDrawerOpen.value = true;
+    // open panorama page to view the generated result (replace right-side drawer behavior)
     isSidebarCollapsed.value = true;
+    await nextTick();
+    router.push('/panorama');
     const event = new CustomEvent('cross-fade-trigger', {
       detail: {
         id: result.taskId,
@@ -608,6 +610,11 @@ const openModelFromHistory = (id) => {
   isModelDrawerOpen.value = false;
   isSidebarCollapsed.value = false;
   router.push({ path: '/', query: { archive: id } });
+};
+
+const goPanorama = () => {
+  if (!hasModelDrawer.value) return;
+  router.push('/panorama');
 };
 
 const goCommunity = () => {

@@ -248,9 +248,42 @@ export const useTaskStore = defineStore('task', {
         return;
       }
 
+      // If a modelAsset exists for this archive, ensure the corresponding task is marked as completed.
+      // Some backends may provide modelAsset without updating the originating task; normalize that here
+      // so the UI does not keep showing a 'processing' state.
+      if (archive.modelAsset) {
+        try {
+          const assetId = archive.modelAsset.id;
+          if (assetId) {
+            const matching = archive.tasks.find((t) => t.id === assetId);
+            if (matching) {
+              matching.status = 'success';
+              matching.progress = 100;
+              matching.updatedAt = Date.now();
+            } else {
+              // Add a synthetic successful task to keep legacy projections consistent
+              archive.tasks.push(
+                normalizeTask({
+                  id: assetId,
+                  status: 'success',
+                  progress: 100,
+                  prompt: archive.modelAsset.prompt || '',
+                  imagePreview: archive.modelAsset.imagePreview || '',
+                  createdAt: archive.modelAsset.createdAt || Date.now(),
+                  updatedAt: archive.modelAsset.updatedAt || Date.now()
+                })
+              );
+            }
+          }
+        } catch (e) {
+          console.warn('Error normalizing modelAsset -> task mapping', e);
+        }
+      }
+
       this.tasks = archive.tasks.map((item) => ({ ...item }));
       this.assetHistory = archive.modelAsset ? [{ ...archive.modelAsset }] : [];
     },
+
     buildWorkspacePayload() {
       const archives = this.archives.reduce((acc, archive) => {
         acc[archive.id] = cloneArchive(archive);
@@ -547,6 +580,52 @@ export const useTaskStore = defineStore('task', {
 
       this.refreshLegacyProjection();
       void this.syncWorkspace();
+
+      // Try caching the panorama image locally (Cache API) for faster local rendering
+      (async () => {
+        try {
+          const imagePreview = archive.modelAsset?.imagePreview || '';
+          if (!imagePreview || typeof window === 'undefined' || !('caches' in window)) return;
+          const assetId = archive.modelAsset.id;
+          const cacheName = 'dit-panorama-cache';
+          const cacheKey = `/__local_panorama_cache__/${assetId}`;
+          const cache = await caches.open(cacheName);
+          const existing = await cache.match(cacheKey);
+          if (existing) {
+            archive.modelAsset.cachedLocal = cacheKey;
+            try { localStorage.setItem('dit-panorama-cache:' + assetId, cacheKey); } catch(e) {}
+            return;
+          }
+          const dataUrlToBlob = (dataUrl) => {
+            const parts = dataUrl.split(',');
+            const header = parts[0] || '';
+            const matches = header.match(/:(.*?);/);
+            const mime = matches ? matches[1] : 'image/png';
+            const bstr = atob(parts[1] || '');
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) u8arr[n] = bstr.charCodeAt(n);
+            return new Blob([u8arr], { type: mime });
+          };
+          let response = null;
+          if (imagePreview.startsWith('data:')) {
+            const blob = dataUrlToBlob(imagePreview);
+            response = new Response(blob, { headers: { 'Content-Type': blob.type || 'image/png' }});
+          } else {
+            const resp = await fetch(imagePreview, { mode: 'cors' });
+            if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+            const blob = await resp.blob();
+            response = new Response(blob, { headers: { 'Content-Type': blob.type || 'image/png' }});
+          }
+          await cache.put(cacheKey, response.clone());
+          archive.modelAsset.cachedLocal = cacheKey;
+          try { localStorage.setItem('dit-panorama-cache:' + assetId, cacheKey); } catch(e) {}
+          // update persisted workspace if desired
+          void this.syncWorkspace();
+        } catch (error) {
+          console.warn('Panorama caching failed:', error);
+        }
+      })();
 
       if (archive.sourceCommunityId) {
         void requestCommunityApi('/api/community/remix', {

@@ -13,9 +13,9 @@
       </div>
     </header>
 
-    <section ref="scene1Ref" class="story-scene scene-1">
+    <section ref="scene1Ref" class="story-scene scene-1" :style="{ minHeight: sceneMinHeights.scene1 }">
       <div class="scene-stage">
-        <div class="hero-grid">
+        <div ref="heroGridRef" class="hero-grid">
           <article class="hero-copy">
             <h1>上传图片文字需求，轻松漫游室内场景</h1>
             <p class="scene-desc">
@@ -55,38 +55,44 @@
       </div>
     </section>
 
-    <section ref="scene2Ref" class="story-scene scene-2">
+    <section ref="scene2Ref" class="story-scene scene-2" :style="{ minHeight: sceneMinHeights.scene2 }">
       <div ref="scene2PinRef" class="scene-stage">
-        <div class="features-layout">
+        <div ref="featuresLayoutRef" class="features-layout">
           <article class="scene-copy">
             <h2>从平面图片到室内360全景，核心能力一目了然</h2>
-            <p class="scene-desc">
-              理解意图-识别图片-构建思路-模型构建-渲染展示
-            </p>
-            <p class="scene-desc">
-              全通路一站式完成，轻松获得作品
-            </p>
-            <div class="feature-tabs mono">
+            <p class="scene-desc">理解意图-识别图片-构建思路-模型构建-渲染展示</p>
+            <p class="scene-desc">全通路一站式完成，轻松获得作品</p>
+
+            <div class="feature-tabs mono" role="tablist">
               <button
-                v-for="(card, index) in featureCards"
-                :key="card.id"
-                class="feature-tab"
-                :class="{ active: index === activeFeatureIndex }"
-                type="button"
-                @click="setFeature(index)"
+                  v-for="(card, index) in featureCards"
+                  :key="card.id"
+                  :id="`tab-${card.id}`"
+                  class="feature-tab"
+                  :class="{ active: index === activeFeatureIndex }"
+                  type="button"
+                  role="tab"
+                  :aria-selected="index === activeFeatureIndex"
+                  :aria-controls="`panel-${card.id}`"
+                  :tabindex="index === activeFeatureIndex ? 0 : -1"
+                  @click="scrollToFeature(index)"
               >
                 {{ card.short }}
               </button>
             </div>
           </article>
 
-          <div class="feature-stack" aria-live="polite">
+          <div class="feature-stack">
             <article
-              v-for="(card, index) in featureCards"
-              :key="card.id"
-              class="feature-card"
-              :class="{ active: index === activeFeatureIndex }"
-              :style="featureCardStyle(index)"
+                v-for="(card, index) in featureCards"
+                :key="card.id"
+                :id="`panel-${card.id}`"
+                class="feature-card"
+                :class="{ active: index === activeFeatureIndex }"
+                :style="featureCardStyle(index)"
+                role="tabpanel"
+                :aria-labelledby="`tab-${card.id}`"
+                :hidden="index !== activeFeatureIndex"
             >
               <h3>{{ card.title }}</h3>
               <p>{{ card.desc }}</p>
@@ -104,9 +110,9 @@
                   </div>
                 </template>
                 <template v-else>
-                  <span></span>
-                  <span></span>
-                  <span></span>
+                  <span aria-hidden="true"></span>
+                  <span aria-hidden="true"></span>
+                  <span aria-hidden="true"></span>
                 </template>
               </div>
             </article>
@@ -115,9 +121,9 @@
       </div>
     </section>
 
-    <section ref="scene3Ref" class="story-scene scene-3">
+    <section ref="scene3Ref" class="story-scene scene-3" :style="{ minHeight: sceneMinHeights.scene3 }">
       <div class="scene-stage">
-        <section class="showcase-shell">
+        <section ref="showcaseShellRef" class="showcase-shell">
           <div class="showcase-nav mono">
             <button
               v-for="(item, index) in showcaseItems"
@@ -170,7 +176,7 @@
       </div>
     </section>
 
-    <section ref="scene4Ref" class="story-scene scene-4">
+    <section ref="scene4Ref" class="story-scene scene-4" :style="{ minHeight: sceneMinHeights.scene4 }">
       <div class="scene-stage">
         <div ref="formStageRef" class="register-stage" @mousemove="handleGlowMove" @mouseleave="handleGlowLeave">
           <div ref="formGlowRef" class="form-glow" aria-hidden="true"></div>
@@ -263,7 +269,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { Icon } from '@iconify/vue';
 import { gsap } from 'gsap';
@@ -283,6 +289,9 @@ const scene2Ref = ref(null);
 const scene2PinRef = ref(null);
 const scene3Ref = ref(null);
 const scene4Ref = ref(null);
+const heroGridRef = ref(null);
+const featuresLayoutRef = ref(null);
+const showcaseShellRef = ref(null);
 const formStageRef = ref(null);
 const formGlowRef = ref(null);
 const registerCardRef = ref(null);
@@ -302,9 +311,16 @@ const taskPodPreviewTasks = ref([
   { id: 'preview-task-1', status: 'inferencing', progress: 18 },
   { id: 'preview-task-2', status: 'queued', progress: 0 }
 ]);
+const sceneMinHeights = ref({
+  scene1: '120vh',
+  scene2: '108vh',
+  scene3: '116vh',
+  scene4: '122vh'
+});
 
 const sceneNames = ['产品概览', '核心能力', '设计场景', '创建账号'];
 
+// 五张卡片的内容
 const featureCards = [
   {
     id: 'capture',
@@ -345,6 +361,7 @@ const featureCards = [
   }
 ];
 
+// 4个板块的内容
 const showcaseItems = [
   {
     id: 'research',
@@ -405,36 +422,20 @@ const sectionThemes = [
     '--accent-color': '#3b82f6',
     '--halo-a': 'rgba(61, 128, 255, 0.34)',
     '--halo-b': 'rgba(90, 210, 255, 0.22)'
-  },
-  {
-    '--bg-color': '#10131d',
-    '--text-color': '#eef4fb',
-    '--muted-color': '#a9b5c7',
-    '--surface-color': 'rgba(25, 33, 47, 0.92)',
-    '--border-color': 'rgba(226, 235, 248, 0.22)',
-    '--accent-color': '#6aa4ff',
-    '--halo-a': 'rgba(84, 145, 255, 0.3)',
-    '--halo-b': 'rgba(72, 215, 255, 0.2)'
-  },
-  {
-    '--bg-color': '#f6f8fc',
-    '--text-color': '#111827',
-    '--muted-color': '#4b5563',
-    '--surface-color': 'rgba(255, 255, 255, 0.68)',
-    '--border-color': 'rgba(99, 102, 241, 0.22)',
-    '--accent-color': '#3b82f6',
-    '--halo-a': 'rgba(86, 130, 255, 0.32)',
-    '--halo-b': 'rgba(247, 119, 255, 0.22)'
   }
 ];
 
 let gsapCtx = null;
 let activeScroller = null;
+let activeThemeIndex = -1;
+let refreshRaf = 0;
+let scene2ProgressTrigger = null;
 let glowXTo = null;
 let glowYTo = null;
 let featureEditorTimer = null;
 let featureTaskTimer = null;
 let featureEditorIndex = 0;
+const FEATURE_PREVIEW_SCENE_INDEX = 1;
 
 const editorPromptPool = [
   '现代简约客厅，暖色灯光，木纹地板，增加落地灯与地毯。',
@@ -442,14 +443,38 @@ const editorPromptPool = [
   '北欧餐厨一体，白橡木柜体，强化动线与自然采光。'
 ];
 
-const setActiveScene = (index) => {
+const setActiveScene = (index, themeDuration = 0.38) => {
   const next = Math.max(0, Math.min(index, sceneNames.length - 1));
   currentSceneIndex.value = next;
   showFloatingHeader.value = next > 0;
+  const themeIndex = next === 0 ? 0 : 1;
+  applyTheme(themeIndex, themeDuration);
+  syncFeaturePreviewAnimations();
 };
 
-const setFeature = (index) => {
-  activeFeatureIndex.value = Math.max(0, Math.min(index, featureCards.length - 1));
+const clampFeatureIndex = (index) =>
+  Math.max(0, Math.min(index, featureCards.length - 1));
+
+const syncFeatureFromScroll = (index) => {
+  const nextIndex = clampFeatureIndex(index);
+  if (nextIndex === activeFeatureIndex.value) return;
+  activeFeatureIndex.value = nextIndex;
+};
+
+const scrollToFeature = (index) => {
+  if (!scene2ProgressTrigger) return;
+  const nextIndex = clampFeatureIndex(index);
+  const steps = Math.max(1, featureCards.length - 1);
+  const progress = nextIndex / steps;
+  const targetScroll = scene2ProgressTrigger.start + (scene2ProgressTrigger.end - scene2ProgressTrigger.start) * progress;
+  const scroller = getActiveScroller();
+  const behavior = prefersReducedMotion.value ? 'auto' : 'smooth';
+
+  if (scroller === window) {
+    window.scrollTo({ top: targetScroll, behavior });
+    return;
+  }
+  scroller.scrollTo({ top: targetScroll, behavior });
 };
 
 const selectShowcase = (index) => {
@@ -476,6 +501,8 @@ const featureCardStyle = (index) => {
 
 const applyTheme = (index, duration = 0.45) => {
   if (!storyRef.value) return;
+  if (activeThemeIndex === index && duration > 0) return;
+  activeThemeIndex = index;
   gsap.to(storyRef.value, {
     ...sectionThemes[index],
     duration,
@@ -489,34 +516,68 @@ const resolveScrollContainer = () => {
   return storyRef.value.closest('.content') || window;
 };
 
-const normalizeWheelDelta = (event) => {
-  if (event.deltaMode === 1) return 16;
-  if (event.deltaMode === 2) return window.innerHeight;
-  return 1;
+const getActiveScroller = () => activeScroller || resolveScrollContainer();
+
+const getScrollTriggerOptions = () => {
+  const scroller = getActiveScroller();
+  if (scroller === window) return {};
+  return { scroller };
 };
 
-const handleStoryWheel = (event) => {
-  if (event.ctrlKey) return;
-  const scale = normalizeWheelDelta(event);
-  const deltaX = event.deltaX * scale;
-  const deltaY = event.deltaY * scale;
-  if (!deltaX && !deltaY) return;
+const buildSceneMinHeight = (contentHeight, viewportHeight, runway, minimumScreens) => {
+  const next = Math.max(contentHeight + viewportHeight * runway, viewportHeight * minimumScreens);
+  return `${Math.ceil(next)}px`;
+};
 
-  const scroller = activeScroller || resolveScrollContainer();
-  event.preventDefault();
+const updateSceneMinHeights = () => {
+  if (typeof window === 'undefined') return;
+  const viewportHeight = window.innerHeight || 0;
+  if (!viewportHeight) return false;
 
-  if (scroller === window) {
-    window.scrollBy({ left: deltaX, top: deltaY, behavior: 'auto' });
-    return;
+  const heroHeight = heroGridRef.value?.getBoundingClientRect().height || viewportHeight;
+  const featureHeight = featuresLayoutRef.value?.getBoundingClientRect().height || viewportHeight;
+  const showcaseHeight = showcaseShellRef.value?.getBoundingClientRect().height || viewportHeight;
+  const registerHeight = formStageRef.value?.getBoundingClientRect().height || viewportHeight;
+
+  const nextHeights = {
+    scene1: buildSceneMinHeight(heroHeight, viewportHeight, 0.48, 1.18),
+    scene2: buildSceneMinHeight(featureHeight, viewportHeight, 0.34, 1.08),
+    scene3: buildSceneMinHeight(showcaseHeight, viewportHeight, 0.42, 1.14),
+    scene4: buildSceneMinHeight(registerHeight, viewportHeight, 0.52, 1.16)
+  };
+
+  if (
+    sceneMinHeights.value.scene1 === nextHeights.scene1 &&
+    sceneMinHeights.value.scene2 === nextHeights.scene2 &&
+    sceneMinHeights.value.scene3 === nextHeights.scene3 &&
+    sceneMinHeights.value.scene4 === nextHeights.scene4
+  ) {
+    return false;
   }
 
-  scroller.scrollLeft += deltaX;
-  scroller.scrollTop += deltaY;
+  sceneMinHeights.value = nextHeights;
+  return true;
+};
+
+const refreshScrollTriggers = (force = false) => {
+  if (refreshRaf) {
+    window.cancelAnimationFrame(refreshRaf);
+  }
+  refreshRaf = window.requestAnimationFrame(() => {
+    refreshRaf = 0;
+    const hasHeightChange = updateSceneMinHeights();
+    if (force || hasHeightChange) {
+      ScrollTrigger.refresh();
+    }
+  });
+};
+const handleViewportResize = () => {
+  refreshScrollTriggers(true);
 };
 
 const scrollToRegister = () => {
   if (!scene4Ref.value) return;
-  const scroller = activeScroller || resolveScrollContainer();
+  const scroller = getActiveScroller();
   if (scroller === window) {
     const targetTop = scene4Ref.value.getBoundingClientRect().top + window.scrollY;
     window.scrollTo({ top: targetTop, behavior: prefersReducedMotion.value ? 'auto' : 'smooth' });
@@ -595,17 +656,29 @@ const tickTaskPodPreview = () => {
   resetTaskPodPreview();
 };
 
+const isDocumentVisible = () =>
+  typeof document === 'undefined' || document.visibilityState === 'visible';
+
+const shouldRunFeaturePreviewAnimations = () =>
+  currentSceneIndex.value === FEATURE_PREVIEW_SCENE_INDEX &&
+  isDocumentVisible() &&
+  !prefersReducedMotion.value;
+
 const startFeaturePreviewAnimations = () => {
-  if (prefersReducedMotion.value) return;
+  if (!shouldRunFeaturePreviewAnimations()) return;
 
-  featureEditorTimer = window.setInterval(() => {
-    featureEditorIndex = (featureEditorIndex + 1) % editorPromptPool.length;
-    editorPreviewPrompt.value = editorPromptPool[featureEditorIndex];
-  }, 2200);
+  if (!featureEditorTimer) {
+    featureEditorTimer = window.setInterval(() => {
+      featureEditorIndex = (featureEditorIndex + 1) % editorPromptPool.length;
+      editorPreviewPrompt.value = editorPromptPool[featureEditorIndex];
+    }, 2200);
+  }
 
-  featureTaskTimer = window.setInterval(() => {
-    tickTaskPodPreview();
-  }, 320);
+  if (!featureTaskTimer) {
+    featureTaskTimer = window.setInterval(() => {
+      tickTaskPodPreview();
+    }, 320);
+  }
 };
 
 const stopFeaturePreviewAnimations = () => {
@@ -617,6 +690,18 @@ const stopFeaturePreviewAnimations = () => {
     window.clearInterval(featureTaskTimer);
     featureTaskTimer = null;
   }
+};
+
+const syncFeaturePreviewAnimations = () => {
+  if (shouldRunFeaturePreviewAnimations()) {
+    startFeaturePreviewAnimations();
+    return;
+  }
+  stopFeaturePreviewAnimations();
+};
+
+const handleVisibilityChange = () => {
+  syncFeaturePreviewAnimations();
 };
 
 const validate = () => {
@@ -655,14 +740,16 @@ const submitRegister = async () => {
 
 onMounted(async () => {
   await nextTick();
-  setActiveScene(0);
-  applyTheme(0, 0);
+  updateSceneMinHeights();
+  setActiveScene(0, 0);
   setupGlow();
   resetTaskPodPreview();
-  startFeaturePreviewAnimations();
+  syncFeaturePreviewAnimations();
 
   activeScroller = resolveScrollContainer();
-  storyRef.value?.addEventListener('wheel', handleStoryWheel, { passive: false });
+  const scrollTriggerOptions = getScrollTriggerOptions();
+  window.addEventListener('resize', handleViewportResize);
+  document.addEventListener('visibilitychange', handleVisibilityChange);
 
   gsapCtx = gsap.context(() => {
     const scenes = [scene1Ref.value, scene2Ref.value, scene3Ref.value, scene4Ref.value];
@@ -670,24 +757,18 @@ onMounted(async () => {
     scenes.forEach((scene, index) => {
       if (!scene) return;
       ScrollTrigger.create({
+        ...scrollTriggerOptions,
         trigger: scene,
         start: 'top top',
         end: 'bottom top',
         onEnter: () => setActiveScene(index),
         onEnterBack: () => setActiveScene(index)
       });
-
-      ScrollTrigger.create({
-        trigger: scene,
-        start: 'top 55%',
-        end: 'bottom 45%',
-        onEnter: () => applyTheme(index),
-        onEnterBack: () => applyTheme(index)
-      });
     });
 
     if (scene2Ref.value && scene2PinRef.value) {
-      ScrollTrigger.create({
+      scene2ProgressTrigger = ScrollTrigger.create({
+        ...scrollTriggerOptions,
         trigger: scene2Ref.value,
         start: 'top top',
         end: `+=${(featureCards.length - 1) * 95}%`,
@@ -695,18 +776,9 @@ onMounted(async () => {
         pinSpacing: true,
         scrub: true,
         anticipatePin: 1,
-        snap: prefersReducedMotion.value
-          ? false
-          : {
-              snapTo: 1 / (featureCards.length - 1),
-              duration: { min: 0.1, max: 0.24 },
-              delay: 0.02
-            },
         onUpdate: (self) => {
           const nextIndex = Math.min(featureCards.length - 1, Math.round(self.progress * (featureCards.length - 1)));
-          if (nextIndex !== activeFeatureIndex.value) {
-            setFeature(nextIndex);
-          }
+          syncFeatureFromScroll(nextIndex);
         }
       });
     }
@@ -721,6 +793,7 @@ onMounted(async () => {
           scale: 1,
           ease: 'none',
           scrollTrigger: {
+            ...scrollTriggerOptions,
             trigger: scene4Ref.value,
             start: 'top 80%',
             end: 'top 32%',
@@ -743,14 +816,28 @@ onMounted(async () => {
       );
     }
   }, storyRef.value);
+  refreshScrollTriggers(true);
 });
 
+watch(
+  () => prefersReducedMotion.value,
+  () => {
+    syncFeaturePreviewAnimations();
+  }
+);
+
 onBeforeUnmount(() => {
-  storyRef.value?.removeEventListener('wheel', handleStoryWheel);
+  window.removeEventListener('resize', handleViewportResize);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  if (refreshRaf) {
+    window.cancelAnimationFrame(refreshRaf);
+    refreshRaf = 0;
+  }
   if (gsapCtx) {
     gsapCtx.revert();
     gsapCtx = null;
   }
+  scene2ProgressTrigger = null;
   activeScroller = null;
   glowXTo = null;
   glowYTo = null;
@@ -843,20 +930,8 @@ onBeforeUnmount(() => {
 }
 
 .story-scene {
-  min-height: 190vh;
-  position: relative;
-}
-
-.scene-1 {
-  min-height: 175vh;
-}
-
-.scene-2 {
   min-height: 100vh;
-}
-
-.scene-4 {
-  min-height: 160vh;
+  position: relative;
 }
 
 .scene-stage {
@@ -1108,20 +1183,22 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   min-width: 36px;
   height: 36px;
-  background: #ffffff;
+  background: color-mix(in srgb, var(--surface-color) 92%, transparent);
   color: var(--muted-color);
   cursor: pointer;
 }
 
 .feature-tab.active {
-  background: #dce8ff;
+  background: color-mix(in srgb, var(--accent-color) 18%, var(--surface-color));
   color: var(--accent-color);
   border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
 }
 
 .feature-stack {
   position: relative;
-  height: min(68vh, 500px);
+  --feature-card-height: 372px;
+  --feature-anim-height: 188px;
+  height: calc(var(--feature-card-height) + 128px);
 }
 
 .feature-card {
@@ -1131,16 +1208,22 @@ onBeforeUnmount(() => {
   width: min(520px, 100%);
   border-radius: 18px;
   border: 1px solid color-mix(in srgb, var(--border-color) 92%, transparent);
-  background: #ffffff;
-  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.12);
+  background: color-mix(in srgb, var(--surface-color) 96%, transparent);
+  box-shadow: 0 18px 46px color-mix(in srgb, var(--bg-color) 36%, transparent);
   padding: 18px;
   box-sizing: border-box;
+  height: var(--feature-card-height);
+  display: flex;
+  flex-direction: column;
+  color: var(--text-color);
   transition: transform 0.34s ease;
   will-change: transform;
 }
 
 .feature-card.active {
-  box-shadow: 0 26px 56px rgba(30, 64, 175, 0.18);
+  box-shadow:
+    0 26px 56px color-mix(in srgb, var(--bg-color) 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent-color) 24%, transparent);
 }
 
 .card-badge {
@@ -1162,8 +1245,8 @@ onBeforeUnmount(() => {
 }
 
 .feature-anim {
-  margin-top: 12px;
-  height: 90px;
+  margin-top: auto;
+  height: var(--feature-anim-height);
   border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(56, 189, 248, 0.15));
@@ -1172,7 +1255,7 @@ onBeforeUnmount(() => {
 }
 
 .feature-anim.with-component {
-  height: 188px;
+  height: var(--feature-anim-height);
   background: linear-gradient(145deg, rgba(59, 130, 246, 0.08), rgba(30, 41, 59, 0.02));
 }
 
@@ -1201,6 +1284,10 @@ onBeforeUnmount(() => {
   pointer-events: none;
 }
 
+.workspace-preview-editor :deep(.editor-panel *) {
+  pointer-events: none;
+}
+
 .workspace-preview-editor :deep(.header) {
   padding: 12px;
 }
@@ -1219,6 +1306,10 @@ onBeforeUnmount(() => {
   right: 14px;
   transform: scale(0.78);
   transform-origin: top right;
+  pointer-events: none;
+}
+
+.workspace-preview-task :deep(.task-pod *) {
   pointer-events: none;
 }
 
@@ -1884,7 +1975,9 @@ onBeforeUnmount(() => {
   }
 
   .feature-stack {
-    height: 460px;
+    --feature-card-height: 340px;
+    --feature-anim-height: 170px;
+    height: calc(var(--feature-card-height) + 120px);
   }
 
   .form-glow {

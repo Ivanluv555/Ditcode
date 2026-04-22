@@ -1,22 +1,22 @@
 <template>
-  <section class="auth-page">
+  <section class="auth-page" @pointermove="handlePointerMove" @pointerleave="handlePointerLeave">
     <div class="bg-layer bg-grid"></div>
     <div class="bg-layer bg-orb bg-orb-1"></div>
     <div class="bg-layer bg-orb bg-orb-2"></div>
     <div class="bg-layer bg-orb bg-orb-3"></div>
+    <div class="bg-layer bg-pointer" :style="pointerStyle"></div>
     <div class="bg-layer bg-vignette"></div>
 
     <header class="topbar">
       <div class="brand">
         <span class="brand-square"></span>
-        <span class="brand-text">ditapp</span>
+        <span class="brand-text">用户登录</span>
       </div>
     </header>
 
     <div class="auth-card">
-      <h3>ditapp 账号</h3>
-      <p class="subtitle">登录后可管理你的内容与偏好设置</p>
-      <p class="hint">默认账号：demo_user / demo123456（mock后端）</p>
+      <h3>登录</h3>
+      <p class="subtitle">登录以轻松管理你的内容</p>
 
       <label>邮箱或用户名</label>
       <input v-model="account" type="text" placeholder="请输入邮箱或用户名" />
@@ -27,14 +27,14 @@
       <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
       <button class="primary" @click="submitLogin">登录</button>
 
-      <div class="divider">或</div>
+      <div class="divider"></div>
       <RouterLink class="link" to="/register">没有账号？去注册</RouterLink>
     </div>
   </section>
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/packages/auth/store/useAuthStore';
 import { isValidEmail, isValidPassword, isValidUsername } from '@/packages/auth/utils/authValidation';
@@ -42,9 +42,34 @@ import { isValidEmail, isValidPassword, isValidUsername } from '@/packages/auth/
 const account = ref('');
 const password = ref('');
 const errorMsg = ref('');
+const pointerX = ref(50);
+const pointerY = ref(50);
+const pointerActive = ref(false);
 
 const authStore = useAuthStore();
 const router = useRouter();
+
+const pointerStyle = computed(() => ({
+  '--pointer-x': `${pointerX.value}%`,
+  '--pointer-y': `${pointerY.value}%`,
+  opacity: pointerActive.value ? '0.95' : '0.68'
+}));
+
+const handlePointerMove = (event) => {
+  const target = event.currentTarget;
+  if (!(target instanceof HTMLElement)) return;
+  const rect = target.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  pointerX.value = ((event.clientX - rect.left) / rect.width) * 100;
+  pointerY.value = ((event.clientY - rect.top) / rect.height) * 100;
+  pointerActive.value = true;
+};
+
+const handlePointerLeave = () => {
+  pointerX.value = 50;
+  pointerY.value = 50;
+  pointerActive.value = false;
+};
 
 const validate = () => {
   errorMsg.value = '';
@@ -137,6 +162,24 @@ const submitLogin = async () => {
 
 .bg-vignette {
   background: radial-gradient(circle at center, transparent 28%, color-mix(in srgb, var(--color-bg-page) 65%, black) 100%);
+}
+
+.bg-pointer {
+  opacity: 0.68;
+  background-image:
+    radial-gradient(
+      circle 280px at var(--pointer-x, 50%) var(--pointer-y, 50%),
+      color-mix(in srgb, var(--color-primary) 28%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      circle 420px at calc(var(--pointer-x, 50%) + 12%) calc(var(--pointer-y, 50%) + 5%),
+      color-mix(in srgb, var(--color-primary) 12%, transparent) 0%,
+      transparent 74%
+    );
+  filter: blur(2px) saturate(1.05);
+  transition: opacity 0.35s ease;
+  will-change: opacity;
 }
 
 .topbar {
@@ -311,6 +354,12 @@ input::placeholder {
 
   h3 {
     font-size: 34px;
+  }
+}
+
+@media (pointer: coarse) {
+  .bg-pointer {
+    display: none;
   }
 }
 </style>

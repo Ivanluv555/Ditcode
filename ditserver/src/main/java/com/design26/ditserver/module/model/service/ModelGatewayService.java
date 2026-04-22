@@ -48,6 +48,7 @@ public class ModelGatewayService {
             return fallbackMock(request, taskId);
         }
 
+        // 使用LinkedHashMap以获得最近的记录
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("prompt", request.prompt().trim());
         payload.put("imageBase64", normalizeImageBase64(request.imageBase64()));

@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ModelGatewayProperties {
     private String upstreamUrl;
     private String apiKey;
-    private int connectTimeoutMs = 3000;
-    private int readTimeoutMs = 20000;
+    private int connectTimeoutMs = 10000;
+    private int readTimeoutMs = 2000000;
 
     public String getUpstreamUrl() {
         return upstreamUrl;

@@ -20,7 +20,7 @@
         <img :src="resolvedImagePreview" alt="reference" />
       </div>
 
-      <div v-if="previewMode || taskStore.tasks.length" class="status-msg">
+      <div v-if="previewMode || taskStore.tasks.some((t) => ['queued','inferencing','compositing'].includes(t.status))" class="status-msg">
         {{ previewMode ? '引擎正在处理当前建模任务...' : '正在处理任务... 请查看左上角悬浮舱。' }}
       </div>
     </div>

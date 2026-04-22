@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 
 const isWindows = process.platform === 'win32';
 const backendPort = Number(process.env.BACKEND_PORT || 3100);
-const healthUrl = `http://127.0.0.1:${backendPort}/api/health`;
+const healthUrl = `http://47.237.188.77:${backendPort}/api/health`;
 const useMockServer = String(process.env.USE_MOCK_SERVER || 'false').toLowerCase() === 'true';
 const spawnOptions = {
   stdio: 'inherit',
