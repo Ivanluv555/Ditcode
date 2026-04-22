@@ -248,31 +248,63 @@ export const useTaskStore = defineStore('task', {
         return;
       }
 
-      // If a modelAsset exists for this archive, ensure the corresponding task is marked as completed.
-      // Some backends may provide modelAsset without updating the originating task; normalize that here
-      // so the UI does not keep showing a 'processing' state.
+      // Reconcile modelAsset -> tasks to avoid stale "processing" UI states.
       if (archive.modelAsset) {
         try {
-          const assetId = archive.modelAsset.id;
-          if (assetId) {
-            const matching = archive.tasks.find((t) => t.id === assetId);
-            if (matching) {
-              matching.status = 'success';
-              matching.progress = 100;
-              matching.updatedAt = Date.now();
-            } else {
-              // Add a synthetic successful task to keep legacy projections consistent
-              archive.tasks.push(
-                normalizeTask({
-                  id: assetId,
-                  status: 'success',
-                  progress: 100,
-                  prompt: archive.modelAsset.prompt || '',
-                  imagePreview: archive.modelAsset.imagePreview || '',
-                  createdAt: archive.modelAsset.createdAt || Date.now(),
-                  updatedAt: archive.modelAsset.updatedAt || Date.now()
-                })
-              );
+          const asset = archive.modelAsset;
+          const assetTimestamp = Number(asset.updatedAt || asset.createdAt || Date.now());
+          const processing = new Set(['queued', 'inferencing', 'compositing']);
+
+          // Mark exact id matches first
+          let matchedAny = false;
+          for (const t of archive.tasks) {
+            if (t.id === asset.id) {
+              t.status = 'success';
+              t.progress = 100;
+              t.updatedAt = assetTimestamp;
+              matchedAny = true;
+            }
+          }
+
+          // Match by prompt/imagePreview or time window
+          if (!matchedAny) {
+            for (const t of archive.tasks) {
+              if (!processing.has(t.status)) continue;
+              const tCreated = Number(t.createdAt || 0);
+              const promptMatch =
+                asset.prompt && t.prompt && asset.prompt.trim() && t.prompt.trim() && asset.prompt.trim() === t.prompt.trim();
+              const imageMatch = asset.imagePreview && t.imagePreview && asset.imagePreview === t.imagePreview;
+              if (promptMatch || imageMatch || tCreated <= assetTimestamp) {
+                t.status = 'success';
+                t.progress = 100;
+                t.updatedAt = assetTimestamp;
+                matchedAny = true;
+              }
+            }
+          }
+
+          // If still no match, append a synthetic successful task
+          if (!matchedAny) {
+            archive.tasks.push(
+              normalizeTask({
+                id: asset.id,
+                status: 'success',
+                progress: 100,
+                prompt: asset.prompt || '',
+                imagePreview: asset.imagePreview || '',
+                createdAt: asset.createdAt || Date.now(),
+                updatedAt: asset.updatedAt || Date.now()
+              })
+            );
+          }
+
+          // Aggressively mark any older processing tasks as success to avoid stuck UI
+          for (const t of archive.tasks) {
+            const tCreated = Number(t.createdAt || 0);
+            if (processing.has(t.status) && tCreated <= assetTimestamp) {
+              t.status = 'success';
+              t.progress = 100;
+              t.updatedAt = assetTimestamp;
             }
           }
         } catch (e) {
@@ -672,16 +704,54 @@ export const useTaskStore = defineStore('task', {
             })
           });
 
-        const finalPreview = result.imagePreview || '';
-        this.updateTask(taskId, { status: 'success', progress: 100, updatedAt: Date.now() });
+        // Prefer server-provided task id when available
+        const returnedTaskId = result?.taskId || result?.id || taskId;
+
+        // Support multiple possible response fields for the image (imagePreview, imageBase64, url...)
+        const rawPreview = result?.imagePreview || result?.imageBase64 || result?.image || result?.image_url || result?.url || result?.data || result?.base64 || '';
+        const mime = result?.imageMime || result?.mime || result?.contentType || 'image/png';
+        let finalPreview = '';
+
+        if (rawPreview) {
+          if (typeof rawPreview === 'string') {
+            const s = rawPreview.trim();
+            if (s.startsWith('data:')) {
+              finalPreview = s;
+            } else if (s.startsWith('http') || s.startsWith('/')) {
+              finalPreview = s;
+            } else {
+              // treat as raw base64 payload (no data: prefix)
+              const b64 = s.replace(/\s+/g, '');
+              finalPreview = `data:${mime};base64,${b64}`;
+            }
+          } else if (rawPreview instanceof Blob) {
+            finalPreview = URL.createObjectURL(rawPreview);
+          } else if (rawPreview instanceof ArrayBuffer || ArrayBuffer.isView(rawPreview)) {
+            const blob = new Blob([rawPreview], { type: mime });
+            finalPreview = URL.createObjectURL(blob);
+          }
+        }
+
+        // If backend returned a different id, update archive task id to keep consistency
+        const archive = this.currentArchive;
+        if (archive && returnedTaskId !== taskId) {
+          const t = archive.tasks.find((x) => x.id === taskId);
+          if (t) t.id = returnedTaskId;
+        }
+
+        // Mark task as completed
+        this.updateTask(returnedTaskId, { status: 'success', progress: 100, updatedAt: Date.now() });
+
+        // Add asset record using the returned id
         this.addAssetRecord({
-          id: taskId,
+          id: returnedTaskId,
           prompt: normalizedPrompt,
           imagePreview: finalPreview,
-          createdAt: result.finishedAt || Date.now(),
-          updatedAt: result.finishedAt || Date.now()
+          createdAt: result?.finishedAt || Date.now(),
+          updatedAt: result?.finishedAt || Date.now()
         });
-        return { ok: true, taskId, imagePreview: finalPreview };
+
+        return { ok: true, taskId: returnedTaskId, imagePreview: finalPreview };
       } catch (error) {
         this.updateTask(taskId, { status: 'failed', progress: 100, updatedAt: Date.now() });
         return { ok: false, message: error.message || '模型生成失败', taskId };
