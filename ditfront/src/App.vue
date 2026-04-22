@@ -511,10 +511,10 @@ const generateFromComposer = async () => {
   });
 
   if (result.ok) {
-    // show generated result (static preview); no Three.js cross-fade
+    // show generated result (static preview); open viewer page
     isSidebarCollapsed.value = true;
     await nextTick();
-    await router.push('/panorama');
+    await router.push({ path: '/viewer', query: { image: result.imagePreview || '' } });
   }
 
   promptText.value = '';
@@ -595,10 +595,7 @@ const openModelFromHistory = (id) => {
   router.push({ path: '/', query: { archive: id } });
 };
 
-const goPanorama = () => {
-  if (!hasModelDrawer.value) return;
-  router.push('/panorama');
-};
+
 
 const goCommunity = () => {
   router.push('/community');

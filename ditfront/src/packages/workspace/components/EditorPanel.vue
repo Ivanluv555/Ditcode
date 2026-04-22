@@ -29,6 +29,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 
@@ -52,6 +53,7 @@ const promptText = ref(props.previewPrompt);
 const imageFile = ref(null);
 const imagePreview = ref('');
 const taskStore = useTaskStore();
+const router = useRouter();
 const allowImageAttachment = computed(() => !props.previewMode && taskStore.currentArchiveMessages.length === 0);
 const resolvedImagePreview = computed(() => (props.previewMode ? props.previewImage : imagePreview.value));
 
@@ -107,11 +109,13 @@ const generateNew = async () => {
         imagePreview: referenceImage,
         createdAt: Date.now()
       });
-      // Notify WebGL cross fade via global event or store
-      const event = new CustomEvent('cross-fade-trigger', {
-        detail: { id: taskId, prompt: promptText.value.trim(), hasImage: !!referenceFile }
-      });
-      window.dispatchEvent(event);
+      // Open viewer page for generated panorama
+      try {
+        const imageUrl = referenceImage || '';
+        router.push({ path: '/viewer', query: { image: imageUrl } });
+      } catch (e) {
+        console.warn('Failed to open viewer:', e);
+      }
 
       promptText.value = '';
       clearImage();
