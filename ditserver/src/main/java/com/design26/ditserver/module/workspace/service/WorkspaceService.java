@@ -300,6 +300,7 @@ private void replaceArchiveChildren(ArchiveEntity archive, ArchivePayload payloa
                         System.out.println(">> 数据库查询: 没找到旧资产，准备新建...");
                         ArchiveModelAssetEntity newAsset = new ArchiveModelAssetEntity();
                         newAsset.setArchive(archive);
+                        newAsset.setArchiveId(archive.getId());
                         return newAsset;
                     });
             System.out.println(">> 数据库查询: 已准备好实体。当前数据库中的旧图片路径: [" + asset.getImagePreview() + "]");

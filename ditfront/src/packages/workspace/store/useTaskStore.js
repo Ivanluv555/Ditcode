@@ -731,7 +731,8 @@ export const useTaskStore = defineStore('task', {
 
       // push an assistant message pointing to the returned panorama so UI can render it as a left bubble
       try {
-        const previewUrl = archive.modelAsset?.localPreview || '';
+        // const previewUrl = archive.modelAsset?.localPreview || '';
+        const previewUrl = archive.modelAsset?.imagePreview || '';
         if (previewUrl) {
           this.appendMessage('', { role: 'assistant', createdAt: archive.modelAsset.updatedAt, imagePreview: previewUrl });
         }
@@ -865,7 +866,7 @@ export const useTaskStore = defineStore('task', {
           status: 'success',
           progress: 100,
           updatedAt: Date.now(),
-          imageName: returnedImageName, // 将文件名存入 Task
+          imageName: result?.imageName || result?.fileName || '', // 将文件名存入 Task
           imagePreview: finalPreview    // 将最终路径存入 Task
         });
 
