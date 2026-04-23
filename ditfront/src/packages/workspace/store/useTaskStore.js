@@ -805,21 +805,13 @@ export const useTaskStore = defineStore('task', {
         const mime = result?.imageMime || result?.mime || result?.contentType || 'image/png';
 
         // ✅ 替换为这段增强版代码：
-        let finalPreview = '';
+        let finalPreview = result?.imagePreview || '';
 
-        // 1. 全方位捕获后端可能返回的文件名/路径字段
-        const returnedImageName = result?.imageName || result?.fileName || result?.assetName || result?.asset_id || result?.assetId || result?.asset || result?.data?.imageName || result?.data?.assetName || '';
-
-        if (returnedImageName) {
-          // 2. 智能拼接：如果后端已经返回了带 / 的完整路径，直接使用；否则拼接 /userN/
-          if (returnedImageName.startsWith('/') || returnedImageName.startsWith('http')) {
-            finalPreview = returnedImageName;
-          } else {
-            finalPreview = `/userN/${returnedImageName}`;
-          }
-        } else if (rawPreview && typeof rawPreview === 'string') {
-          // 3. 兜底策略：Base64
-          finalPreview = rawPreview.startsWith('data:') ? rawPreview : `data:${mime};base64,${rawPreview}`;
+        // ✅ 3. 兜底策略（如果走的是 base64 或者是 mock）
+        if (!finalPreview && rawPreview && typeof rawPreview === 'string') {
+          finalPreview = rawPreview.startsWith('data:') || rawPreview.startsWith('http') || rawPreview.startsWith('/')
+              ? rawPreview
+              : `data:${mime};base64,${rawPreview}`;
         }
 
         // Create an in-memory object URL for immediate rendering (no persistent cache)

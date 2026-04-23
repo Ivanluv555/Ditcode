@@ -149,7 +149,6 @@ public class WorkspaceService {
     private void replaceArchiveChildren(ArchiveEntity archive, ArchivePayload payload) {
         archiveMessageRepository.deleteByArchive_Id(archive.getId());
         archiveTaskRepository.deleteByArchive_Id(archive.getId());
-        archiveModelAssetRepository.deleteByArchiveId(archive.getId());
 
         List<MessagePayload> messages = Optional.ofNullable(payload.getMessages()).orElse(List.of());
         List<TaskPayload> tasks = Optional.ofNullable(payload.getTasks()).orElse(List.of());
@@ -195,17 +194,31 @@ public class WorkspaceService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "每个存档仅首轮任务允许图片");
         }
 
+        // ✅ 替换为这段“平滑更新”逻辑
         if (modelAsset != null) {
             if (archive.getId() == null || archive.getId().isBlank()) {
                 throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "存档ID为空，无法保存模型资源");
             }
-            ArchiveModelAssetEntity asset = new ArchiveModelAssetEntity();
-            asset.setArchive(archive);
+
+            // 🌟 核心修复：先从数据库查，如果有就复用老对象更新字段；如果没有才 new 一个新的。
+            // 这样完美避开了 Hibernate 的“同 ID 删除再新建”的缓存崩溃 Bug。
+            ArchiveModelAssetEntity asset = archiveModelAssetRepository.findById(archive.getId())
+                    .orElseGet(() -> {
+                        ArchiveModelAssetEntity newAsset = new ArchiveModelAssetEntity();
+                        newAsset.setArchive(archive);
+                        return newAsset;
+                    });
+
             asset.setPrompt(defaultIfBlank(modelAsset.getPrompt(), ""));
+            // 这里把前端传来的 "/api/assets/xxx.jpg" 存入
             asset.setImagePreview(blankToNull(modelAsset.getImagePreview()));
             asset.setCreatedAt(modelAsset.getCreatedAt() != null ? modelAsset.getCreatedAt() : now);
             asset.setUpdatedAt(modelAsset.getUpdatedAt() != null ? modelAsset.getUpdatedAt() : asset.getCreatedAt());
+
             archiveModelAssetRepository.save(asset);
+        } else {
+            // 只有当前端真的传来空的 asset 时，才执行删除清理
+            archiveModelAssetRepository.deleteById(archive.getId());
         }
     }
 
