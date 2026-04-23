@@ -731,7 +731,7 @@ export const useTaskStore = defineStore('task', {
 
       // push an assistant message pointing to the returned panorama so UI can render it as a left bubble
       try {
-        const previewUrl = archive.modelAsset?.localPreview || archive.modelAsset?.imagePreview || '';
+        const previewUrl = archive.modelAsset?.localPreview || '';
         if (previewUrl) {
           this.appendMessage('', { role: 'assistant', createdAt: archive.modelAsset.updatedAt, imagePreview: previewUrl });
         }
@@ -803,74 +803,18 @@ export const useTaskStore = defineStore('task', {
         // Support multiple possible response fields for the image (imagePreview, imageBase64, url...)
         const rawPreview = result?.imagePreview || result?.imageBase64 || result?.image || result?.image_url || result?.url || result?.data || result?.base64 || '';
         const mime = result?.imageMime || result?.mime || result?.contentType || 'image/png';
+
         let finalPreview = '';
+        const returnedImageName = result?.imageName || result?.fileName || '';
 
-        // Helper: map mime to extension
-        const extFromMime = (m) => {
-          if (!m) return 'png';
-          const base = String(m).split(';')[0].trim().toLowerCase();
-          switch (base) {
-            case 'image/png': return 'png';
-            case 'image/jpeg': return 'jpg';
-            case 'image/jpg': return 'jpg';
-            case 'image/webp': return 'webp';
-            case 'image/gif': return 'gif';
-            case 'image/svg+xml': return 'svg';
-            default: {
-              const parts = base.split('/');
-              return parts[1] ? parts[1].replace(/[^a-z0-9+\-_.]/gi, '') : 'png';
-            }
-          }
-        };
-
-        // Try to determine extension from several places
-        let ext = result?.ext || result?.fileExt || result?.file_ext || null;
-        if (!ext && result?.imageMime) ext = extFromMime(result.imageMime);
-        if (!ext && mime) ext = extFromMime(mime);
-
-        if (!ext && typeof rawPreview === 'string') {
-          const s = rawPreview.trim();
-          if (s.startsWith('data:')) {
-            const m2 = s.slice(5).split(';')[0];
-            ext = extFromMime(m2);
-          } else if (s.startsWith('http') || s.startsWith('/')) {
-            try {
-              const url = new URL(s, typeof window !== 'undefined' ? window.location.origin : '');
-              const m = url.pathname.match(/\.([a-zA-Z0-9]+)(?:\?|$)/);
-              if (m) ext = m[1];
-            } catch (e) {
-              // ignore
-            }
-          }
+        if (returnedImageName) {
+          // 如果后端返回了文件名，直接拼接到 /userN/ 目录下
+          finalPreview = `/userN/${returnedImageName}`;
+        } else if (rawPreview && typeof rawPreview === 'string') {
+          // 兜底：如果没有文件名，但有 Base64 数据
+          finalPreview = rawPreview.startsWith('data:') ? rawPreview : `data:${mime};base64,${rawPreview}`;
         }
-
-        if (!ext) ext = 'png';
-
-        // According to new rule, when model returns image info, backend will store it and
-        // frontend should use GET /api/assets/asset_<taskId>.<ext>
-        if (rawPreview || assetName) {
-          finalPreview = `/api/assets/asset_${returnedTaskId}.${ext}`;
-        }
-
-        // Fallback: if no asset convention is available and rawPreview is immediate data, normalize it
-        if (!finalPreview && rawPreview) {
-          if (typeof rawPreview === 'string') {
-            const s = rawPreview.trim();
-            if (s.startsWith('data:')) {
-              finalPreview = s;
-            } else if (s.startsWith('http') || s.startsWith('/')) {
-              finalPreview = s;
-            } else {
-              const b64 = s.replace(/\s+/g, '');
-              finalPreview = `data:${mime};base64,${b64}`;
-            }
-          } else if (rawPreview instanceof Blob) {
-            finalPreview = URL.createObjectURL(rawPreview);
-          } else if (rawPreview instanceof ArrayBuffer || ArrayBuffer.isView(rawPreview)) {
-            const blob = new Blob([rawPreview], { type: mime });
-            finalPreview = URL.createObjectURL(blob);
-          }
-        }
+        // ✅ 粘贴到此结束
 
         // Create an in-memory object URL for immediate rendering (no persistent cache)
         let localPreview = '';
