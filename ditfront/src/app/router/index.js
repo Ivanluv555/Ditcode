@@ -15,7 +15,6 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Home from '@/packages/workspace/pages/HomePage.vue';
 import Discovery from '@/packages/discovery/pages/DiscoveryPage.vue';
 import ResourceLibrary from '@/packages/discovery/pages/ResourceLibraryPage.vue';
-import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
 import Viewer from '@/packages/workspace/pages/ViewerPage.vue';
 import Login from '@/packages/auth/pages/LoginPage.vue';
 import Register from '@/packages/auth/pages/RegisterPage.vue';
@@ -30,7 +29,7 @@ const routes = [
   { path: '/my-content', component: MyContent, meta: { hideWorkspace: true } },
   { path: '/settings', component: Settings },
   { path: '/viewer', component: Viewer },
-  { path: '/workshop/:id', component: Workshop },
+  //{ path: '/workshop/:id', component: Workshop },
   { path: '/login', component: Login, meta: { standalone: true } },
   { path: '/register', component: Register, meta: { standalone: true } }
 ];

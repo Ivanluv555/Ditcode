@@ -352,7 +352,6 @@ import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
-import Workshop from '@/packages/workspace/pages/WorkshopPage.vue';
 import brandNameWhite from '../ditlogos/name_front_line.svg';
 
 const taskStore = useTaskStore();
