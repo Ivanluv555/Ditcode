@@ -35,23 +35,13 @@ export const useAuthStore = defineStore('auth', {
         if (token) {
           const session = await requestAuthApi('/api/auth/session', { method: 'GET' });
           this.currentUser = session.user || null;
-          this.initialized = true;
-          return;
-        }
-
-        const autoLogin = await requestAuthApi('/api/auth/default-login', { method: 'POST' });
-        this.currentUser = autoLogin.user || null;
-        saveToken(autoLogin.token || '');
-      } catch {
-        saveToken('');
-
-        try {
-          const autoLogin = await requestAuthApi('/api/auth/default-login', { method: 'POST' });
-          this.currentUser = autoLogin.user || null;
-          saveToken(autoLogin.token || '');
-        } catch {
+        } else {
           this.currentUser = null;
         }
+      } catch (error) {
+        // Clear any invalid token and treat as not logged in
+        saveToken('');
+        this.currentUser = null;
       }
 
       this.initialized = true;

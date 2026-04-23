@@ -34,6 +34,17 @@ public class ArchiveMessageEntity {
     @Column(name = "created_at", nullable = false)
     private Long createdAt;
 
+    public String getImagePreview() {
+        return imagePreview;
+    }
+
+    public void setImagePreview(String imagePreview) {
+        this.imagePreview = imagePreview;
+    }
+
+    @Column(name = "image_preview", columnDefinition = "LONGTEXT")
+    private String imagePreview;
+
     public String getId() {
         return id;
     }

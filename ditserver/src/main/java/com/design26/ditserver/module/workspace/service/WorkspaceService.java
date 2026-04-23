@@ -374,10 +374,7 @@ public class WorkspaceService {
         if (normalized == null) {
             return null;
         }
-        if (normalized.startsWith("data:")) {
-            return null;
-        }
-        return normalized.length() > 255 ? null : normalized;
+        return normalized;
     }
 
     private void deleteArchiveWithDependencies(String archiveId) {

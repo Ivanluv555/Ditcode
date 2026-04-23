@@ -84,14 +84,35 @@ public class ModelGatewayService {
 
             if (contentType.startsWith("image/")) {
                 String normalizedContentType = contentType.split(";")[0].trim();
-                String base64 = Base64.getEncoder().encodeToString(response.body());
-                imagePreview = "data:" + normalizedContentType + ";base64," + base64;
+                byte[] bodyBytes = response.body();
+
+                // 保存到本地磁盘 data/assets/asset_<taskId>.<ext>
+                String ext = normalizedContentType.substring("image/".length());
+                if ("jpeg".equalsIgnoreCase(ext)) {
+                    ext = "jpg";
+                }
+                String safeTaskId = taskId.replaceAll("[^a-zA-Z0-9_-]", "");
+                String filename = "asset_" + safeTaskId + "." + ext;
+
+                java.nio.file.Path storageDir = java.nio.file.Paths.get("data", "assets").toAbsolutePath().normalize();
+                try {
+                    java.nio.file.Files.createDirectories(storageDir);
+                    java.nio.file.Path target = storageDir.resolve(filename).normalize();
+                    if (!target.startsWith(storageDir)) {
+                        throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "无效的资产路径");
+                    }
+                    java.nio.file.Files.write(target, bodyBytes);
+                } catch (IOException e) {
+                    throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "无法保存生成的图片");
+                }
+
+                imagePreview = "/api/assets/" + filename;
                 raw = new LinkedHashMap<>();
                 raw.put("provider", "upstream-image");
                 raw.put("contentType", normalizedContentType);
                 raw.put("xTaskId", response.headers().firstValue("X-Task-Id").orElse(""));
                 raw.put("xResultMode", response.headers().firstValue("X-Result-Mode").orElse(""));
-                raw.put("size", response.body().length);
+                raw.put("size", bodyBytes.length);
                 provider = "upstream-image";
             } else if (contentType.startsWith("application/json")) {
                 raw = objectMapper.readValue(new String(response.body(), StandardCharsets.UTF_8), new TypeReference<>() {});

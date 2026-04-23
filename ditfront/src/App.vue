@@ -177,16 +177,6 @@
       </Transition>
     </main>
 
-    <aside v-if="false" class="model-drawer">
-      <div class="model-drawer-head">
-        <span>建模区</span>
-        <button class="drawer-close" @click="isModelDrawerOpen = false">关闭</button>
-      </div>
-      <div class="model-drawer-body">
-        <Workshop />
-      </div>
-    </aside>
-
     <Teleport to="body">
       <Transition
         :css="false"
@@ -237,7 +227,6 @@
           >
             <div class="user-modal settings-modal dropdown-panel settings-dropdown" :style="settingsDropdownStyle" @click.stop>
               <h3 class="dropdown-item" style="--i: 0">设置与帮助</h3>
-              <p class="dropdown-item" style="--i: 1">这里保留最常用的本地设置，不再单独跳转到设置页。</p>
               <div class="settings-group">
                 <div class="settings-row dropdown-item" style="--i: 2">
                   <span>主题模式</span>
@@ -257,9 +246,8 @@
                 </div>
 
                 <div class="settings-help dropdown-item" style="--i: 4">
-                  <p>发起新工作会回到首页并保留当前工作区。</p>
-                  <p>我的内容会展示最近生成的资产和进行中的任务。</p>
-                  <p>主题切换会立即应用并写入本地存储。</p>
+                  <p>发起新工作会回到首页并保留当前工作区哦</p>
+                  <p>查看我的内容可以看到最近生成的资产和进行中的任务哦</p>
                 </div>
               </div>
               <div class="modal-actions dropdown-item" style="--i: 5">

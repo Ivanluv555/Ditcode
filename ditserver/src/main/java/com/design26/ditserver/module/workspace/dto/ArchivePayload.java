@@ -74,6 +74,7 @@ public class ArchivePayload {
     public void setModelAsset(ModelAssetPayload modelAsset) {
         this.modelAsset = modelAsset;
     }
+    public ModelAssetPayload getModelAsset(String modelAssetId) { return this.modelAsset;}
 
     public String getSourceCommunityId() {
         return sourceCommunityId;

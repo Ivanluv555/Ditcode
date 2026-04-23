@@ -117,7 +117,16 @@
         }
     </style>
 
-
+    <!-- 导入 Import Map，用于解析 ES Modules 模块路径 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js"
+            }
+        }
+    </script>
 </head>
 <body>
 
@@ -137,9 +146,9 @@
 
 <!-- 主逻辑脚本 -->
 <script type="module">
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-    import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
-    import * as TWEEN from 'https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js';
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import * as TWEEN from '@tweenjs/tween.js';
 
     class PanoramaEngine {
         constructor() {
@@ -278,25 +287,6 @@
     // --- 应用初始化与事件绑定 ---
     window.onload = () => {
         const engine = new PanoramaEngine();
-
-        // If an image is provided via query param, load it immediately
-        try {
-            const params = new URLSearchParams(window.location.search || '');
-            const img = params.get('image');
-            if (img) {
-                // decodeURIComponent in case callers encoded the URL
-                const decoded = decodeURIComponent(img);
-                engine.loadPanorama(decoded).then(() => {
-                    // best-effort: revoke if it was a blob URL (caller should manage lifecycle)
-                    // do not revoke remote http(s) URLs
-                    if (decoded.startsWith('blob:')) {
-                        setTimeout(() => URL.revokeObjectURL(decoded), 2000);
-                    }
-                });
-            }
-        } catch (e) {
-            console.warn('Failed to load image from query param:', e);
-        }
 
         // 处理文件上传
         const fileInput = document.getElementById('file-input');
