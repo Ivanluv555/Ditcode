@@ -160,7 +160,8 @@ public class WorkspaceService {
 
         for (MessagePayload messagePayload : messages) {
             String content = safeText(messagePayload.getText());
-            if (content.isBlank()) {
+            String imagePreview = safeText(messagePayload.getImagePreview());
+            if (content.isBlank() && imagePreview.isBlank()) {
                 continue;
             }
             ArchiveMessageEntity message = new ArchiveMessageEntity();
@@ -168,6 +169,7 @@ public class WorkspaceService {
             message.setArchive(archive);
             message.setRole(normalizeMessageRole(messagePayload.getRole()));
             message.setContent(content);
+            message.setImagePreview(blankToNull(imagePreview));
             message.setCreatedAt(messagePayload.getCreatedAt() != null ? messagePayload.getCreatedAt() : now);
             archiveMessageRepository.save(message);
         }
@@ -239,6 +241,7 @@ public class WorkspaceService {
                     "id", item.getId(),
                     "role", item.getRole(),
                     "text", item.getContent(),
+                    "imagePreview", defaultIfBlank(item.getImagePreview(), ""),
                     "createdAt", item.getCreatedAt()
                 ))
                 .collect(Collectors.toList());

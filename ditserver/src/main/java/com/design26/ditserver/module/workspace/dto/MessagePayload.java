@@ -7,6 +7,16 @@ public class MessagePayload {
     private String id;
     private String role;
     private String text;
+
+    public String getImagePreview() {
+        return imagePreview;
+    }
+
+    public void setImagePreview(String imagePreview) {
+        this.imagePreview = imagePreview;
+    }
+
+    private String imagePreview;
     private Long createdAt;
 
     public String getId() {
