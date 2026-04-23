@@ -33,7 +33,15 @@
             :data-bubble-key="bubble.key"
           >
             <span v-if="showPublishedAuthor" class="bubble-author">{{ publishedAuthorName }}</span>
-            <div class="bubble user">{{ bubble.text }}</div>
+            <div class="bubble user">
+              <div v-if="bubble.text" class="bubble-text">{{ bubble.text }}</div>
+              <img
+                  v-if="bubble.imagePreview"
+                  :src="bubble.imagePreview"
+                  class="bubble-image"
+                  alt="生成的图像"
+              />
+            </div>
             <span class="bubble-time">{{ formatDate(bubble.createdAt) }}</span>
           </div>
           <div v-if="loadingTaskExists" class="bubble-item bubble-item-loading">
@@ -94,6 +102,7 @@ const taskEntries = computed(() =>
       key: `task-${item.id}`,
       id: item.id,
       text: item.prompt,
+      imagePreview: item.imagePreview,
       createdAt: Number(item.createdAt) || Date.now()
     }))
 );
@@ -107,6 +116,7 @@ const historyEntries = computed(() => {
       key: `asset-${item.id}`,
       id: item.id,
       text: item.prompt,
+      imagePreview: item.imagePreview,
       createdAt: Number(item.createdAt) || Date.now()
     }));
 });
@@ -389,6 +399,13 @@ h2 {
   line-height: 1.45;
   word-break: break-word;
   box-shadow: var(--shadow-card);
+}
+
+.bubble-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 8px;
+  display: block;
 }
 
 .bubble.loading {
