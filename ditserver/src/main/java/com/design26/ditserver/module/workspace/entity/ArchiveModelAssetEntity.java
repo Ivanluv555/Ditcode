@@ -1,13 +1,7 @@
 package com.design26.ditserver.module.workspace.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.MapsId;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "archive_model_assets")
@@ -17,7 +11,7 @@ import jakarta.persistence.Table;
  * 业务角色：保存与 Archive 一一对应的模型生成结果（prompt、imagePreview、时间戳等），
  * 用于展示历史产出并作为存档的“模型资产”元数据。
  */
-public class ArchiveModelAssetEntity {
+public class ArchiveModelAssetEntity implements Persistable<String> {
     @Id
     @Column(name = "archive_id", length = 64, nullable = false)
     private String archiveId;
@@ -38,6 +32,27 @@ public class ArchiveModelAssetEntity {
 
     @Column(name = "updated_at", nullable = false)
     private Long updatedAt;
+
+    @Transient
+    private boolean isNew = true;
+
+    @Override
+    public String getId() {
+        return archiveId;
+    }
+
+    // 4. 实现 isNew 方法，Spring Data JPA 的 save() 将依赖此方法判断调用 persist 还是 merge
+    @Override
+    public boolean isNew() {
+        return isNew;
+    }
+
+    // 5. 数据从数据库加载或持久化后，标记为非新数据
+    @PostLoad
+    @PostPersist
+    public void markNotNew() {
+        this.isNew = false;
+    }
 
     public String getArchiveId() {
         return archiveId;
