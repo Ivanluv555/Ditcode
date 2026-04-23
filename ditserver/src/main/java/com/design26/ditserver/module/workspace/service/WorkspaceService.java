@@ -190,9 +190,9 @@ public class WorkspaceService {
             archiveTaskRepository.save(task);
         }
 
-        if (imageTaskCount > 1) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "每个存档仅首轮任务允许图片");
-        }
+        //if (imageTaskCount > 1) {
+        //    throw new ApiException(HttpStatus.BAD_REQUEST, "每个存档仅首轮任务允许图片");
+        //}
 
         // ✅ 替换为这段“平滑更新”逻辑
         if (modelAsset != null) {
