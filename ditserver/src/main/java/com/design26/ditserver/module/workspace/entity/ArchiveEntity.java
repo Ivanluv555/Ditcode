@@ -11,6 +11,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "archives")
+/**
+ * ArchiveEntity - 用户工作区（存档）持久化实体。
+ *
+ * 业务角色：映射 archives 表，保存用户的工作数据集（标题、状态、是否私有、来源引用等），
+ * 是 Workspace 功能的核心数据结构，关联消息、任务与模型资产实体。
+ */
 public class ArchiveEntity {
     @Id
     @Column(length = 64, nullable = false)

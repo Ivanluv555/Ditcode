@@ -36,6 +36,36 @@
             <Icon icon="fa6-solid:folder-open" class="action-icon" aria-hidden="true" />
             <span>我的内容</span>
           </RouterLink>
+          
+          <RouterLink
+            to="/community"
+            class="sidebar-action"
+            :class="{ active: route.path === '/community' }"
+            @click="collapseModelPanels"
+          >
+            <Icon icon="fa6-solid:users" class="action-icon" aria-hidden="true" />
+            <span>社区作品</span>
+          </RouterLink>
+
+          <RouterLink
+            to="/featured"
+            class="sidebar-action"
+            :class="{ active: route.path === '/featured' }"
+            @click="collapseModelPanels"
+          >
+            <Icon icon="fa6-solid:star" class="action-icon" aria-hidden="true" />
+            <span>优秀案例</span>
+          </RouterLink>
+
+          <RouterLink
+            to="/resources"
+            class="sidebar-action"
+            :class="{ active: route.path === '/resources' }"
+            @click="collapseModelPanels"
+          >
+            <Icon icon="fa6-solid:lightbulb" class="action-icon" aria-hidden="true" />
+            <span>灵感素材库</span>
+          </RouterLink>
         </nav>
 
         <div v-if="history.length > 0" class="history-block" v-show="!isSidebarCollapsed">
@@ -106,11 +136,6 @@
         </div>
 
         <div class="top-right">
-          <template v-if="showWorkspaceControls">
-            <button class="widget-btn" title="社区" @click="goCommunity">
-              <Icon :icon="communityIcon" class="widget-icon" />
-            </button>
-          </template>
           <button ref="avatarBtnRef" class="avatar-btn" style="overflow: hidden; padding: 0;" @click="onAvatarClick">
             <Icon icon="fa6-solid:circle-user" class="avatar-icon" />
           </button>
@@ -424,6 +449,8 @@ const isHomeWelcomeState = computed(
 const routeTitleMap = {
   '/': '创作主页',
   '/community': '发现社区',
+  '/resources': '资源灵感库',
+  '/featured': '优秀案例',
   '/my-content': '我的内容',
   '/settings': '设置与帮助'
 };
@@ -532,10 +559,10 @@ const generateFromComposer = async () => {
   });
 
   if (result.ok) {
-    // show generated result (static preview); open viewer page
+    // show generated result (static preview) in the workspace; do NOT auto-open viewer
+    // The assistant message with the flat preview will be appended by the store (addAssetRecord).
     isSidebarCollapsed.value = true;
     await nextTick();
-    await router.push({ path: '/viewer', query: { image: result.imagePreview || '' } });
   }
 
   promptText.value = '';

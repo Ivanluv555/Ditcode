@@ -9,7 +9,7 @@
 
   UI 设计要点：
   - 图片气泡宽度限制为主面板的一半，避免占满全文区域，阅读体验更像聊天应用（例如 Gemini）。
-  - 点击“在查看器中打开”会导航到 /viewer 并将图片 URL 放入 query，查看器通过 iframe 加载 demo.html 进行 Three.js 渲染（如适用）。
+  - 任务完成后，左侧助手气泡直接展示平面全景图预览，用户点击图片才会跳转到 /viewer 查看器页面。
 
   可扩展：可为图片气泡添加下载、分享或放大预览等操作。
 -->
@@ -20,11 +20,9 @@
         <div v-for="msg in messages" :key="msg.id" :class="['message-row', msg.role === 'user' ? 'align-right' : 'align-left']">
           <!-- assistant (left) shows image bubble if available -->
           <div v-if="msg.role !== 'user'" class="bubble assistant">
-            <div v-if="msg.imagePreview" class="image-wrap">
-              <img :src="msg.imagePreview" alt="全景预览" />
-              <div class="viewer-actions">
-                <button class="open-viewer" @click="openViewer(msg.imagePreview)">在查看器中打开</button>
-              </div>
+            <div v-if="msg.imagePreview" class="image-wrap" @click="openViewer(msg.imagePreview)">
+              <img :src="msg.imagePreview" alt="平面全景图预览" />
+              <div class="preview-badge">点击查看全景</div>
             </div>
             <div v-else class="text-content">{{ msg.text }}</div>
           </div>
@@ -114,20 +112,26 @@ const openViewer = (imageUrl) => {
   color: #102030;
 }
 .text-content { white-space: pre-wrap; word-break: break-word; }
+.image-wrap {
+  position: relative;
+  cursor: pointer;
+}
 .image-wrap img {
   width: 100%;
   height: auto;
   display: block;
   border-radius: 8px;
 }
-.viewer-actions { margin-top: 8px; display:flex; justify-content:flex-start; }
-.open-viewer {
-  border: none;
-  background: #0f63d9;
-  color: white;
+.preview-badge {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
   padding: 6px 10px;
-  border-radius: 8px;
-  cursor: pointer;
+  border-radius: 999px;
+  font-size: 12px;
+  pointer-events: none;
 }
 .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
 .ui-layer > * { pointer-events: auto; }

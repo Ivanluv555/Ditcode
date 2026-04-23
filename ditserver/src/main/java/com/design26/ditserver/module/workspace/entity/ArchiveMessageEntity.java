@@ -10,6 +10,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "archive_messages")
+/**
+ * ArchiveMessageEntity - 存档内的消息实例实体。
+ *
+ * 业务角色：表示用户与助手在单个 Archive 中的对话记录（role/content/createdAt），
+ * 被 WorkspaceService 聚合并返回给前端显示历史消息。
+ */
 public class ArchiveMessageEntity {
     @Id
     @Column(length = 96, nullable = false)

@@ -17,6 +17,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * AuthService - 认证业务实现。
+ *
+ * 业务角色：处理用户注册、登录、会话创建与销毁的核心逻辑，负责输入校验、密码加密存储、
+ * 会话记录管理（SessionEntity）等，实现对上层控制器的业务支撑。
+ */
 @Service
 public class AuthService {
     // 用户名必须是3-20个字母、数字或下划线

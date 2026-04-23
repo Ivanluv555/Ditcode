@@ -15,6 +15,12 @@ import org.springframework.stereotype.Service;
  * 负责从HTTP请求中提取认证信息，并根据会话信息查询当前用户
  * 提供获取当前用户的接口，供控制器等其他组件使用
  */
+/**
+ * AuthContextService - 认证上下文与会话提取工具服务。
+ *
+ * 业务角色：从 HttpServletRequest 中解析 Authorization Token，并通过 SessionRepository
+ * 查找并返回当前会话对应的 UserEntity。供控制器和服务用于获取当前用户或要求登录。
+ */
 @Service
 public class AuthContextService {
     // Bearer Token的前缀，一会儿给它剪掉

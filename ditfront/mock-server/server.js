@@ -442,6 +442,58 @@ const server = createServer(async (req, res) => {
     return;
   }
 
+  if (method === 'GET' && url === '/api/featured') {
+    // Placeholder endpoint for featured examples. Currently returns an empty list.
+    sendJson(res, 200, { ok: true, archives: [] });
+    return;
+  }
+
+  if (method === 'GET' && url === '/api/resources') {
+    // Return example resource archives with category field for frontend filtering
+    const now = Date.now();
+    const sample = [
+      {
+        id: 'res_bed_001',
+        title: '极简床头设计',
+        ownerId: 'res_author_1',
+        ownerName: '资源作者A',
+        messages: [{ text: '床头设计参考', role: 'user', createdAt: now - 60000 }],
+        modelAsset: { id: 'res_bed_001', prompt: '床头设计参考', imagePreview: '/index.jpg', createdAt: now - 60000, updatedAt: now - 60000 },
+        category: '卧具',
+        remixCount: 3,
+        createdAt: now - 60000,
+        updatedAt: now - 60000
+      },
+      {
+        id: 'res_seat_001',
+        title: '人体工学椅子',
+        ownerId: 'res_author_2',
+        ownerName: '资源作者B',
+        messages: [{ text: '椅子参考', role: 'user', createdAt: now - 120000 }],
+        modelAsset: { id: 'res_seat_001', prompt: '椅子参考', imagePreview: '/index.jpg', createdAt: now - 120000, updatedAt: now - 120000 },
+        category: '坐具',
+        remixCount: 5,
+        createdAt: now - 120000,
+        updatedAt: now - 120000
+      },
+      {
+        id: 'res_util_001',
+        title: '延展功能部件',
+        ownerId: 'res_author_3',
+        ownerName: '资源作者C',
+        messages: [{ text: '部件参考', role: 'user', createdAt: now - 180000 }],
+        modelAsset: { id: 'res_util_001', prompt: '部件参考', imagePreview: '/index.jpg', createdAt: now - 180000, updatedAt: now - 180000 },
+        category: '实用部件',
+        remixCount: 2,
+        createdAt: now - 180000,
+        updatedAt: now - 180000
+      }
+    ];
+
+    sendJson(res, 200, { ok: true, archives: sample });
+    return;
+  }
+
   if (method === 'POST' && url === '/api/community/remix') {
     const body = await parseBody(req);
     const communityId = String(body.communityId || '').trim();

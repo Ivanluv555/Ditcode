@@ -13,7 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// 认证控制器
+/**
+ * AuthController - 认证与会话相关的HTTP接口层。
+ *
+ * 业务角色：对外提供注册、登录、登出和查询当前会话用户的REST接口，
+ * 将请求委派给 AuthService 并使用 AuthContextService 解析请求中的Token。
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

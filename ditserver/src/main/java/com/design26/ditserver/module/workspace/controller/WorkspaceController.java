@@ -12,6 +12,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * WorkspaceController - 工作区（Archive）管理的HTTP接口。
+ *
+ * 业务角色：提供获取、保存（覆盖）与重置用户工作区的REST接口，
+ * 将具体业务委托给 WorkspaceService，并通过 AuthContextService 校验当前用户。
+ */
 @RestController
 @RequestMapping("/api/workspace")
 public class WorkspaceController {

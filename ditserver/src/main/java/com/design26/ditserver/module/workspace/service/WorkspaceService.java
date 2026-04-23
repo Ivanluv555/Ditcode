@@ -33,6 +33,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * WorkspaceService - 工作区（Archive）核心业务实现。
+ *
+ * 业务角色：负责用户工作区的构建、持久化、任务与消息的管理、以及与社区发布/Remix 的协同逻辑，
+ * 包含一系列事务方法来保证 Archive 及其子实体（messages/tasks/modelAsset）的数据一致性。
+ */
 @Service
 public class WorkspaceService {
     private static final Set<String> ARCHIVE_STATUS = Set.of("idle", "inferencing", "success", "failed");

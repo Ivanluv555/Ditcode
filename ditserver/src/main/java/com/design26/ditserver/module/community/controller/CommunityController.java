@@ -13,6 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * CommunityController - 社区相关的HTTP接口层。
+ *
+ * 业务角色：提供社区存档的查询（列表）、发布/取消发布和 remix 操作的REST接口，
+ * 将请求委派给 CommunityService，并使用 AuthContextService 验证用户权限。
+ */
 @RestController
 @RequestMapping("/api/community")
 public class CommunityController {

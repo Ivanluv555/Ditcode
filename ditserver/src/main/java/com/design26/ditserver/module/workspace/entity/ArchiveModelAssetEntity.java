@@ -11,6 +11,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "archive_model_assets")
+/**
+ * ArchiveModelAssetEntity - 存档关联的模型产出（资源）实体。
+ *
+ * 业务角色：保存与 Archive 一一对应的模型生成结果（prompt、imagePreview、时间戳等），
+ * 用于展示历史产出并作为存档的“模型资产”元数据。
+ */
 public class ArchiveModelAssetEntity {
     @Id
     @Column(name = "archive_id", length = 64, nullable = false)

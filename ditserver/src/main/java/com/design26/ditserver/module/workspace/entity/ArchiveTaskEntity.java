@@ -10,6 +10,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "archive_tasks")
+/**
+ * ArchiveTaskEntity - 存档相关的任务实体（如模型推理任务）。
+ *
+ * 业务角色：保存任务的状态、进度、关联提示词与生成结果引用，
+ * 由 WorkspaceService 管理并供前端查询任务历史或状态。
+ */
 public class ArchiveTaskEntity {
     @Id
     @Column(length = 96, nullable = false)

@@ -21,6 +21,13 @@ import java.util.Optional;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+/**
+ * ModelGatewayService - 调用/封装上游模型服务的业务实现。
+ *
+ * 业务角色：负责构建请求并调用外部模型网关（或回退到本地mock），
+ * 解析上游响应（图片或JSON），封装成内部的 ModelGenerateResponse 以供控制器返回。
+ * 处理超时、错误码和内容类型的兼容逻辑。
+ */
 @Service
 public class ModelGatewayService {
     private final HttpClient httpClient;

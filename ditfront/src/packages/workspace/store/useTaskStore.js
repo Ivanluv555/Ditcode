@@ -118,6 +118,8 @@ const normalizeArchive = (archive = {}, idFallback = '') => {
     tasks,
     messages,
     modelAsset,
+    // 保留可选的分类字段用于资源/精选等页面
+    category: archive.category || '',
     sourceCommunityId: archive.sourceCommunityId || '',
     isPrivate: archive.isPrivate !== false,
     remixCount: Number.isFinite(archive.remixCount) ? archive.remixCount : 0,
@@ -218,6 +220,8 @@ export const useTaskStore = defineStore('task', {
     archiveOrder: [],
     currentArchiveId: '',
     communityArchives: [],
+    featuredArchives: [],
+    resourceArchives: [],
     tasks: [],
     assetHistory: [],
     initialized: false
@@ -272,6 +276,28 @@ export const useTaskStore = defineStore('task', {
       } catch (error) {
         console.warn('Community archives load failed:', error);
         this.communityArchives = [];
+      }
+    },
+    async fetchFeaturedArchives() {
+      try {
+        const result = await requestCommunityApi('/api/featured', { method: 'GET' });
+        this.featuredArchives = Array.isArray(result.archives)
+          ? result.archives.map((archive) => normalizeArchive(archive, archive.id))
+          : [];
+      } catch (error) {
+        console.warn('Featured archives load failed:', error);
+        this.featuredArchives = [];
+      }
+    },
+    async fetchResourceArchives() {
+      try {
+        const result = await requestCommunityApi('/api/resources', { method: 'GET' });
+        this.resourceArchives = Array.isArray(result.archives)
+          ? result.archives.map((archive) => normalizeArchive(archive, archive.id))
+          : [];
+      } catch (error) {
+        console.warn('Resource archives load failed:', error);
+        this.resourceArchives = [];
       }
     },
     setWorkspace(workspace) {

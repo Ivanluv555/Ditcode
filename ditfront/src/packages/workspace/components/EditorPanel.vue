@@ -126,13 +126,8 @@ const generateNew = async () => {
         imagePreview: referenceImage,
         createdAt: Date.now()
       });
-      // Open viewer page for generated panorama
-      try {
-        const imageUrl = referenceImage || '';
-        router.push({ path: '/viewer', query: { image: imageUrl } });
-      } catch (e) {
-        console.warn('Failed to open viewer:', e);
-      }
+        // Do NOT auto-open the viewer. The UI will render a flat preview bubble
+        // (added by addAssetRecord) and the user can click it to open the viewer.
 
       promptText.value = '';
       clearImage();

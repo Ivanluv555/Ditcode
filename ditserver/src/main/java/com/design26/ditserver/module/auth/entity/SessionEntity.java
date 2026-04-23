@@ -8,6 +8,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+/**
+ * SessionEntity - 会话持久化实体。
+ *
+ * 业务角色：映射 sessions 表，保存基于 token 的会话信息并关联 UserEntity，用于实现基于Token的简单认证方案。
+ */
 @Entity
 @Table(name = "sessions")
 public class SessionEntity {

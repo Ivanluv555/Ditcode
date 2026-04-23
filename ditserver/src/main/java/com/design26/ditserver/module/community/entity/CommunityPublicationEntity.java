@@ -13,6 +13,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "community_publications")
+/**
+ * CommunityPublicationEntity - 社区发布（publication）持久化实体。
+ *
+ * 业务角色：映射 community_publications 表，表示用户将某个 Archive 发布到社区后生成的记录，
+ * 存储标题、发布者、激活状态和 remix 统计等信息，供社区列表与 remix 统计使用。
+ */
 public class CommunityPublicationEntity {
     @Id
     @Column(length = 128, nullable = false)

@@ -7,7 +7,12 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-// 全局异常处理器，捕获应用中抛出的ApiException和其他异常，返回统一格式的错误响应
+/**
+ * GlobalExceptionHandler - 全局异常统一处理器。
+ *
+ * 业务角色：拦截应用中抛出的业务异常（ApiException）、验证异常和未处理异常，
+ * 将它们转换为统一的JSON错误响应（ok=false + message），保证对外接口的一致性并隐藏内部细节。
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

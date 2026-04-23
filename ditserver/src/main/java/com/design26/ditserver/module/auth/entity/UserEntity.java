@@ -5,6 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+/**
+ * UserEntity - 持久化用户实体。
+ *
+ * 业务角色：映射 users 表，保存用户基本信息（id、username、email、passwordHash 等），
+ * 被 AuthService、SessionEntity 等服务/实体引用，注意不要在对外DTO中泄露密码哈希。
+ */
 @Entity
 @Table(name = "users")
 public class UserEntity {

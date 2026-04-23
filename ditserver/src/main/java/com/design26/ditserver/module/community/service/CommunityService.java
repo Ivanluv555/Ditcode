@@ -25,6 +25,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * CommunityService - 社区功能的业务实现。
+ *
+ * 业务角色：负责社区存档的聚合展示、发布/下架流程以及 remix 事件的记录，
+ * 与 Archive 模块、Publication 存储和 Remix 事件表协同工作，承担社区相关的业务规则与事务管理。
+ */
 @Service
 public class CommunityService {
     private final CommunityPublicationRepository communityPublicationRepository;

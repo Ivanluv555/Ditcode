@@ -12,6 +12,12 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "remix_events")
+/**
+ * RemixEventEntity - 记录 remix 行为的实体。
+ *
+ * 业务角色：当用户基于社区存档进行 remix 时记录事件（谁 remix、来源存档、目标存档、时间），
+ * 供社区统计和回溯使用。
+ */
 public class RemixEventEntity {
     @Id
     @Column(length = 128, nullable = false)
