@@ -804,17 +804,23 @@ export const useTaskStore = defineStore('task', {
         const rawPreview = result?.imagePreview || result?.imageBase64 || result?.image || result?.image_url || result?.url || result?.data || result?.base64 || '';
         const mime = result?.imageMime || result?.mime || result?.contentType || 'image/png';
 
+        // ✅ 替换为这段增强版代码：
         let finalPreview = '';
-        const returnedImageName = result?.imageName || result?.fileName || '';
+
+        // 1. 全方位捕获后端可能返回的文件名/路径字段
+        const returnedImageName = result?.imageName || result?.fileName || result?.assetName || result?.asset_id || result?.assetId || result?.asset || result?.data?.imageName || result?.data?.assetName || '';
 
         if (returnedImageName) {
-          // 如果后端返回了文件名，直接拼接到 /userN/ 目录下
-          finalPreview = `/userN/${returnedImageName}`;
+          // 2. 智能拼接：如果后端已经返回了带 / 的完整路径，直接使用；否则拼接 /userN/
+          if (returnedImageName.startsWith('/') || returnedImageName.startsWith('http')) {
+            finalPreview = returnedImageName;
+          } else {
+            finalPreview = `/userN/${returnedImageName}`;
+          }
         } else if (rawPreview && typeof rawPreview === 'string') {
-          // 兜底：如果没有文件名，但有 Base64 数据
+          // 3. 兜底策略：Base64
           finalPreview = rawPreview.startsWith('data:') ? rawPreview : `data:${mime};base64,${rawPreview}`;
         }
-        // ✅ 粘贴到此结束
 
         // Create an in-memory object URL for immediate rendering (no persistent cache)
         let localPreview = '';
@@ -861,8 +867,15 @@ export const useTaskStore = defineStore('task', {
           if (t) t.id = returnedTaskId;
         }
 
-        // Mark task as completed
-        this.updateTask(returnedTaskId, { status: 'success', progress: 100, updatedAt: Date.now() });
+        // ✅ 替换为以下代码：
+        // Mark task as completed AND save image properties
+        this.updateTask(returnedTaskId, {
+          status: 'success',
+          progress: 100,
+          updatedAt: Date.now(),
+          imageName: returnedImageName, // 将文件名存入 Task
+          imagePreview: finalPreview    // 将最终路径存入 Task
+        });
 
         // Add asset record using the returned id and include localPreview for immediate rendering
         this.addAssetRecord({
