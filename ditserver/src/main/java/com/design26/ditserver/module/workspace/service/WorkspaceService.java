@@ -223,51 +223,30 @@ public class WorkspaceService {
     }
 */
 private void replaceArchiveChildren(ArchiveEntity archive, ArchivePayload payload) {
-    System.out.println("\n============= [数据追踪钩子: 开始处理工作区保存] =============");
-    System.out.println(">> 当前存档 ID: " + archive.getId());
-
     archiveMessageRepository.deleteByArchive_Id(archive.getId());
     archiveTaskRepository.deleteByArchive_Id(archive.getId());
-
-    List<MessagePayload> messages = Optional.ofNullable(payload.getMessages()).orElse(List.of());
+    List<MessagePayload> messages =
+            Optional.ofNullable(payload.getMessages()).orElse(List.of());
     List<TaskPayload> tasks = Optional.ofNullable(payload.getTasks()).orElse(List.of());
     ModelAssetPayload modelAsset = payload.getModelAsset();
-
     long now = System.currentTimeMillis();
-
-    // ------------------ 追踪 Messages ------------------
-    System.out.println("\n[钩子节点 1]: 开始处理 Messages 数组，共 " + messages.size() + " 条");
     for (MessagePayload messagePayload : messages) {
         String content = safeText(messagePayload.getText());
         String imagePreview = safeText(messagePayload.getImagePreview());
-
-        System.out.println("  -> 提取消息内容 - Text: [" + content + "], ImagePreview: [" + imagePreview + "]");
-
+// 只要有文本或有图片就不拦截
         if (content.isBlank() && imagePreview.isBlank()) {
-            System.out.println("  -> [拦截] 文本和图片均为空，已丢弃此消息。");
             continue;
         }
-
-        try {
-            ArchiveMessageEntity message = new ArchiveMessageEntity();
-            message.setId(defaultIfBlank(messagePayload.getId(), idGenerator.newId("msg")));
-            message.setArchive(archive);
-            message.setRole(normalizeMessageRole(messagePayload.getRole()));
-            message.setContent(content);
-            message.setImagePreview(blankToNull(imagePreview));
-            message.setCreatedAt(messagePayload.getCreatedAt() != null ? messagePayload.getCreatedAt() : now);
-
-            archiveMessageRepository.save(message);
-            archiveMessageRepository.flush(); // 强制立刻写入数据库，绝不延迟！
-            System.out.println("  -> [成功] 消息已强制写入数据库！");
-        } catch (Exception e) {
-            System.err.println("  -> [致命错误] 保存消息到数据库失败！原因: " + e.getMessage());
-            e.printStackTrace();
-        }
+        ArchiveMessageEntity message = new ArchiveMessageEntity();
+        message.setId(defaultIfBlank(messagePayload.getId(), idGenerator.newId("msg")));
+        message.setArchive(archive);
+        message.setRole(normalizeMessageRole(messagePayload.getRole()));
+        message.setContent(content);
+        message.setImagePreview(blankToNull(imagePreview));
+        message.setCreatedAt(messagePayload.getCreatedAt() != null ?
+                messagePayload.getCreatedAt() : now);
+        archiveMessageRepository.save(message);
     }
-
-    // ------------------ 追踪 Tasks ------------------
-    System.out.println("\n[钩子节点 2]: 开始处理 Tasks");
     for (TaskPayload taskPayload : tasks) {
         ArchiveTaskEntity task = new ArchiveTaskEntity();
         task.setId(defaultIfBlank(taskPayload.getId(), idGenerator.newId("task")));
@@ -277,60 +256,58 @@ private void replaceArchiveChildren(ArchiveEntity archive, ArchivePayload payloa
         task.setPrompt(defaultIfBlank(taskPayload.getPrompt(), ""));
         task.setImageName(blankToNull(taskPayload.getImageName()));
         task.setImagePreview(normalizeTaskImagePreview(taskPayload.getImagePreview()));
-        task.setCreatedAt(taskPayload.getCreatedAt() != null ? taskPayload.getCreatedAt() : now);
-        task.setUpdatedAt(taskPayload.getUpdatedAt() != null ? taskPayload.getUpdatedAt() : task.getCreatedAt());
+        task.setCreatedAt(taskPayload.getCreatedAt() != null ? taskPayload.getCreatedAt() :
+                now);
+        task.setUpdatedAt(taskPayload.getUpdatedAt() != null ? taskPayload.getUpdatedAt() :
+                task.getCreatedAt());
         archiveTaskRepository.save(task);
     }
-
-    // ------------------ 追踪 Model Asset ------------------
-    System.out.println("\n[钩子节点 3]: 开始处理 ModelAsset (模型资产)");
-    System.out.println(">> 前端传来的 ModelAsset 对象是否为空: " + (modelAsset == null ? "是 (NULL)" : "否 (有数据)"));
-
+// ==========================================
+// 🌟 核心修复区：依靠父实体的级联特性 (Cascade)
+// 绝对不要在这里调 repository.save()！
+// ==========================================
+// ==========================================
+    // 🌟 核心终极修复：使用存在即更新、不存在即插入的逻辑，
+    // 并手动赋予明确的 ID，彻底解决 MapsId 崩溃问题。
+    // ==========================================
     if (modelAsset != null) {
-        String incomingImagePreview = modelAsset.getImagePreview();
-        System.out.println(">> 前端传来的图片路径: [" + incomingImagePreview + "]");
-
-        if (archive.getId() == null || archive.getId().isBlank()) {
+        String archiveId = archive.getId();
+        if (archiveId == null || archiveId.isBlank()) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "存档ID为空，无法保存模型资源");
         }
 
-        try {
-            ArchiveModelAssetEntity asset = archiveModelAssetRepository.findById(archive.getId())
-                    .orElseGet(() -> {
-                        System.out.println(">> 数据库查询: 没找到旧资产，准备新建...");
-                        ArchiveModelAssetEntity newAsset = new ArchiveModelAssetEntity();
-                        newAsset.setArchive(archive);
-                        newAsset.setArchiveId(archive.getId());
-                        return newAsset;
-                    });
-            System.out.println(">> 数据库查询: 已准备好实体。当前数据库中的旧图片路径: [" + asset.getImagePreview() + "]");
+        // 1. 尝试去数据库里找
+        Optional<ArchiveModelAssetEntity> existingAssetOpt = archiveModelAssetRepository.findById(archiveId);
 
-            asset.setPrompt(defaultIfBlank(modelAsset.getPrompt(), ""));
-            asset.setImagePreview(blankToNull(incomingImagePreview));
-            asset.setCreatedAt(modelAsset.getCreatedAt() != null ? modelAsset.getCreatedAt() : now);
-            asset.setUpdatedAt(modelAsset.getUpdatedAt() != null ? modelAsset.getUpdatedAt() : asset.getCreatedAt());
+        if (existingAssetOpt.isPresent()) {
+            // 2A. 如果存在，直接在这个被 Hibernate 托管的旧对象上修改
+            // 因为它是从数据库里捞出来的，Hibernate 认识它，执行 save() 绝对不会报 null identifier
+            ArchiveModelAssetEntity existingAsset = existingAssetOpt.get();
+            existingAsset.setPrompt(defaultIfBlank(modelAsset.getPrompt(), ""));
+            existingAsset.setImagePreview(blankToNull(modelAsset.getImagePreview()));
+            existingAsset.setCreatedAt(modelAsset.getCreatedAt() != null ? modelAsset.getCreatedAt() : now);
+            existingAsset.setUpdatedAt(modelAsset.getUpdatedAt() != null ? modelAsset.getUpdatedAt() : now);
 
-            System.out.println(">> 开始执行 save 动作...");
-            archiveModelAssetRepository.save(asset);
+            archiveModelAssetRepository.save(existingAsset);
+        } else {
+            // 2B. 如果不存在，这是一个全新的对象！
+            // ⚠️ 极其关键：必须同时 setArchive 和 setArchiveId，才能满足 @MapsId 和底层状态机的苛刻要求
+            ArchiveModelAssetEntity newAsset = new ArchiveModelAssetEntity();
+            newAsset.setArchive(archive);
+            newAsset.setArchiveId(archiveId);
 
-            System.out.println(">> 开始执行 flush (强制写入) 动作...");
-            archiveModelAssetRepository.flush(); // 强制立刻写入，揪出所有隐藏的 SQL 错误！
+            newAsset.setPrompt(defaultIfBlank(modelAsset.getPrompt(), ""));
+            newAsset.setImagePreview(blankToNull(modelAsset.getImagePreview()));
+            newAsset.setCreatedAt(modelAsset.getCreatedAt() != null ? modelAsset.getCreatedAt() : now);
+            newAsset.setUpdatedAt(modelAsset.getUpdatedAt() != null ? modelAsset.getUpdatedAt() : now);
 
-            System.out.println(">> [大功告成] ModelAsset 成功写入数据库！");
-        } catch (Exception e) {
-            System.err.println(">> [致命错误] 保存 ModelAsset 崩溃！错误信息如下:");
-            e.printStackTrace();
+            // 此时，Hibernate 会把它当作一条全新的数据（带着明确的主键），顺滑执行 INSERT
+            archiveModelAssetRepository.save(newAsset);
         }
     } else {
-        System.out.println(">> 前端传来的 ModelAsset 为 null，执行删除操作。");
-        try {
-            archiveModelAssetRepository.deleteById(archive.getId());
-            archiveModelAssetRepository.flush();
-        } catch(Exception e) {
-            System.err.println(">> [错误] 删除 ModelAsset 失败: " + e.getMessage());
-        }
+        // 如果前端传 null，则删除
+        archiveModelAssetRepository.deleteById(archive.getId());
     }
-    System.out.println("============= [数据追踪钩子: 处理结束] =============\n");
 }
     private Map<String, Object> buildWorkspaceResponse(UserEntity user) {
         List<ArchiveEntity> archives = archiveRepository.findByOwner_IdAndDeletedAtIsNullOrderByUpdatedAtDesc(user.getId());
