@@ -1,11 +1,6 @@
 <template>
-  <section class="auth-page" @pointermove="handlePointerMove" @pointerleave="handlePointerLeave">
-    <div class="bg-layer bg-grid"></div>
-    <div class="bg-layer bg-orb bg-orb-1"></div>
-    <div class="bg-layer bg-orb bg-orb-2"></div>
-    <div class="bg-layer bg-orb bg-orb-3"></div>
-    <div class="bg-layer bg-pointer" :style="pointerStyle"></div>
-    <div class="bg-layer bg-vignette"></div>
+  <section class="auth-page" @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+    <canvas ref="canvasRef" class="bg-canvas"></canvas>
 
     <header class="topbar">
       <div class="brand">
@@ -34,7 +29,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { onMounted, onUnmounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/packages/auth/store/useAuthStore';
 import { isValidEmail, isValidPassword, isValidUsername } from '@/packages/auth/utils/authValidation';
@@ -42,34 +37,217 @@ import { isValidEmail, isValidPassword, isValidUsername } from '@/packages/auth/
 const account = ref('');
 const password = ref('');
 const errorMsg = ref('');
-const pointerX = ref(50);
-const pointerY = ref(50);
-const pointerActive = ref(false);
+const canvasRef = ref(null);
 
 const authStore = useAuthStore();
 const router = useRouter();
 
-const pointerStyle = computed(() => ({
-  '--pointer-x': `${pointerX.value}%`,
-  '--pointer-y': `${pointerY.value}%`,
-  opacity: pointerActive.value ? '0.95' : '0.68'
-}));
+let gl = null;
+let program = null;
+let texture = null;
+let mouseX = 0.5;
+let mouseY = 0.5;
+let animationId = null;
+let startTime = Date.now();
 
-const handlePointerMove = (event) => {
-  const target = event.currentTarget;
-  if (!(target instanceof HTMLElement)) return;
-  const rect = target.getBoundingClientRect();
-  if (!rect.width || !rect.height) return;
-  pointerX.value = ((event.clientX - rect.left) / rect.width) * 100;
-  pointerY.value = ((event.clientY - rect.top) / rect.height) * 100;
-  pointerActive.value = true;
+const vertexShaderSource = `
+  attribute vec2 a_position;
+  varying vec2 v_texCoord;
+
+  void main() {
+    gl_Position = vec4(a_position, 0.0, 1.0);
+    v_texCoord = a_position * 0.5 + 0.5;
+  }
+`;
+
+const fragmentShaderSource = `
+  precision mediump float;
+
+  uniform sampler2D u_texture;
+  uniform vec2 u_mouse;
+  uniform vec2 u_resolution;
+  uniform float u_time;
+
+  varying vec2 v_texCoord;
+
+  float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
+  }
+
+  void main() {
+    vec2 uv = v_texCoord;
+    uv.y = 1.0 - uv.y;
+
+    vec4 texColor = texture2D(u_texture, uv);
+
+    vec2 pixelPos = gl_FragCoord.xy;
+    float dist = distance(pixelPos, u_mouse * u_resolution);
+
+    float spotlightRadius = 200.0;
+    float spotlight = smoothstep(spotlightRadius, spotlightRadius * 0.5, dist);
+
+    // 粒子效果
+    vec2 particleUV = pixelPos * 0.05 + u_time * 0.1;
+    float particle = random(floor(particleUV));
+    particle = step(0.98, particle) * (0.3 + 0.7 * random(floor(particleUV * 2.0)));
+
+    // 粒子闪烁
+    float flicker = sin(u_time * 3.0 + particle * 10.0) * 0.5 + 0.5;
+    particle *= flicker;
+
+    // 只在探照区域显示粒子
+    particle *= spotlight * 0.4;
+
+    float maskAlpha = 0.88;
+    float alpha = mix(maskAlpha, 0.0, spotlight);
+
+    vec3 darkColor = vec3(0.05, 0.05, 0.08);
+    vec3 finalColor = mix(darkColor, texColor.rgb, 1.0 - alpha);
+
+    // 添加粒子光效
+    finalColor += vec3(particle * 0.8, particle * 0.9, particle);
+
+    gl_FragColor = vec4(finalColor, 1.0);
+  }
+`;
+
+const createShader = (gl, type, source) => {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
+  }
+
+  return shader;
 };
 
-const handlePointerLeave = () => {
-  pointerX.value = 50;
-  pointerY.value = 50;
-  pointerActive.value = false;
+const initWebGL = () => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) {
+    console.error('WebGL not supported');
+    return;
+  }
+
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
+
+  program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    console.error('Program link error:', gl.getProgramInfoLog(program));
+    return;
+  }
+
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,
+     1, -1,
+    -1,  1,
+     1,  1,
+  ]), gl.STATIC_DRAW);
+
+  const positionLocation = gl.getAttribLocation(program, 'a_position');
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+  const image = new Image();
+  image.onload = () => {
+    texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    render();
+  };
+  image.src = '/assets/imgforlogin/login.png';
 };
+
+const resizeCanvas = () => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  if (gl) {
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+};
+
+const render = () => {
+  if (!gl || !program || !texture) return;
+
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.useProgram(program);
+
+  const mouseLocation = gl.getUniformLocation(program, 'u_mouse');
+  gl.uniform2f(mouseLocation, mouseX, mouseY);
+
+  const resolutionLocation = gl.getUniformLocation(program, 'u_resolution');
+  gl.uniform2f(resolutionLocation, canvasRef.value.width, canvasRef.value.height);
+
+  const timeLocation = gl.getUniformLocation(program, 'u_time');
+  gl.uniform1f(timeLocation, (Date.now() - startTime) / 1000.0);
+
+  const textureLocation = gl.getUniformLocation(program, 'u_texture');
+  gl.uniform1i(textureLocation, 0);
+
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+  animationId = requestAnimationFrame(render);
+};
+
+const handleMouseMove = (event) => {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  const rect = canvas.getBoundingClientRect();
+  mouseX = (event.clientX - rect.left) / rect.width;
+  mouseY = 1.0 - (event.clientY - rect.top) / rect.height;
+};
+
+const handleMouseLeave = () => {
+  mouseX = 0.5;
+  mouseY = 0.5;
+};
+
+onMounted(() => {
+  resizeCanvas();
+  initWebGL();
+  window.addEventListener('resize', resizeCanvas);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', resizeCanvas);
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+  }
+  if (gl && texture) {
+    gl.deleteTexture(texture);
+  }
+  if (gl && program) {
+    gl.deleteProgram(program);
+  }
+});
 
 const validate = () => {
   errorMsg.value = '';
@@ -112,74 +290,15 @@ const submitLogin = async () => {
   position: relative;
   min-height: 100vh;
   overflow: hidden;
-  background: var(--auth-page-bg);
+  background: #000;
 }
 
-.bg-layer {
+.bg-canvas {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
-}
-
-.bg-grid {
-  opacity: 0.18;
-  background-image:
-    linear-gradient(color-mix(in srgb, var(--color-text-primary) 9%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in srgb, var(--color-text-primary) 9%, transparent) 1px, transparent 1px);
-  background-size: 64px 64px;
-  mask-image: radial-gradient(circle at center, color-mix(in srgb, var(--color-bg-page) 88%, black) 30%, transparent 80%);
-  animation: gridDrift 36s linear infinite;
-}
-
-.bg-orb {
-  width: 42vw;
-  height: 42vw;
-  border-radius: 50%;
-  opacity: 0.72;
-  will-change: transform, opacity;
-}
-
-.bg-orb-1 {
-  left: -8vw;
-  top: -10vh;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 24%, transparent), transparent 68%);
-  animation: floatOne 24s ease-in-out infinite;
-}
-
-.bg-orb-2 {
-  right: -10vw;
-  top: 8vh;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 68%);
-  animation: floatTwo 30s ease-in-out infinite;
-}
-
-.bg-orb-3 {
-  left: 28vw;
-  bottom: -18vh;
-  background: radial-gradient(circle, color-mix(in srgb, var(--color-primary) 12%, transparent), transparent 65%);
-  animation: floatThree 34s ease-in-out infinite;
-}
-
-.bg-vignette {
-  background: radial-gradient(circle at center, transparent 28%, color-mix(in srgb, var(--color-bg-page) 65%, black) 100%);
-}
-
-.bg-pointer {
-  opacity: 0.68;
-  background-image:
-    radial-gradient(
-      circle 280px at var(--pointer-x, 50%) var(--pointer-y, 50%),
-      color-mix(in srgb, var(--color-primary) 28%, transparent) 0%,
-      transparent 70%
-    ),
-    radial-gradient(
-      circle 420px at calc(var(--pointer-x, 50%) + 12%) calc(var(--pointer-y, 50%) + 5%),
-      color-mix(in srgb, var(--color-primary) 12%, transparent) 0%,
-      transparent 74%
-    );
-  filter: blur(2px) saturate(1.05);
-  transition: opacity 0.35s ease;
-  will-change: opacity;
 }
 
 .topbar {
@@ -300,49 +419,6 @@ input::placeholder {
   font-size: 14px;
 }
 
-@keyframes gridDrift {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-
-  to {
-    transform: translate3d(-56px, -56px, 0);
-  }
-}
-
-@keyframes floatOne {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate3d(6vw, 4vh, 0) scale(1.08);
-  }
-}
-
-@keyframes floatTwo {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate3d(-5vw, 5vh, 0) scale(1.12);
-  }
-}
-
-@keyframes floatThree {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-
-  50% {
-    transform: translate3d(3vw, -3vh, 0) scale(1.06);
-  }
-}
-
 @media (max-width: 900px) {
   .topbar {
     padding: 0 14px;
@@ -354,12 +430,6 @@ input::placeholder {
 
   h3 {
     font-size: 34px;
-  }
-}
-
-@media (pointer: coarse) {
-  .bg-pointer {
-    display: none;
   }
 }
 </style>

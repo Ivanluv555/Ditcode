@@ -87,7 +87,7 @@
               title="删除存档"
               @click.stop="requestDeleteArchive(item)"
             >
-              <Icon icon="fa6-solid:trash-can" class="history-delete-icon" aria-hidden="true" />
+              <Icon icon="fa6-solid:trash-can" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -192,19 +192,113 @@
             @leave="onDropdownPanelLeave"
           >
             <div class="user-modal dropdown-panel user-dropdown" :style="userDropdownStyle" @click.stop>
-              <h3 class="dropdown-item" style="--i: 0">用户信息</h3>
-              <p class="dropdown-item" style="--i: 1"><strong>用户名：</strong>{{ currentUser?.username }}</p>
-              <p class="dropdown-item" style="--i: 2"><strong>邮箱：</strong>{{ currentUser?.email }}</p>
-              <div class="theme-row dropdown-item" style="--i: 3">
-                <span>主题模式：{{ activeTheme === 'dark' ? '暗色' : '亮色' }}</span>
-                <button class="modal-btn" @click="toggleThemeManually">
-                  切换为{{ activeTheme === 'dark' ? '亮色' : '暗色' }}
+              <!-- 顶部用户信息区 -->
+              <div class="user-info-section">
+                <div class="user-avatar dropdown-item" style="--i: 0">
+                  <Icon icon="fa6-solid:circle-user" class="user-avatar-icon" />
+                </div>
+                <div class="user-name dropdown-item" style="--i: 1">{{ currentUser?.username || '未命名用户' }}</div>
+                <div class="user-email dropdown-item" style="--i: 2">{{ currentUser?.email || 'no-email@example.com' }}</div>
+              </div>
+
+              <div class="dropdown-divider"></div>
+
+              <!-- 中段主题设置区 -->
+              <div class="theme-section">
+                <div class="theme-label dropdown-item" style="--i: 3">外观主题</div>
+                <div class="theme-toggle dropdown-item" style="--i: 4">
+                  <button
+                    class="theme-option"
+                    :class="{ active: activeTheme === 'light' }"
+                    @click="setThemePreference('light')"
+                  >
+                    <Icon icon="fa6-solid:sun" class="theme-icon" />
+                    <span>亮色</span>
+                  </button>
+                  <button
+                    class="theme-option"
+                    :class="{ active: activeTheme === 'dark' }"
+                    @click="setThemePreference('dark')"
+                  >
+                    <Icon icon="fa6-solid:moon" class="theme-icon" />
+                    <span>深色</span>
+                  </button>
+                </div>
+              </div>
+
+              <div class="dropdown-divider"></div>
+
+              <!-- 底部功能列表区 -->
+              <div class="actions-section">
+                <button class="action-item dropdown-item" style="--i: 5" @click="handleHistoryClick">
+                  <Icon icon="fa6-solid:clock-rotate-left" class="action-icon" />
+                  <span>历史记录</span>
+                </button>
+                <button class="action-item dropdown-item" style="--i: 6" @click="handleNotificationClick">
+                  <Icon icon="fa6-solid:bell" class="action-icon" />
+                  <span>使用通知</span>
+                </button>
+                <button class="action-item dropdown-item" style="--i: 7" @click="handleSwitchAccountClick">
+                  <Icon icon="fa6-solid:right-left" class="action-icon" />
+                  <span>切换账号</span>
+                </button>
+                <button class="action-item dropdown-item" style="--i: 8" @click="handleContactClick">
+                  <Icon icon="fa6-solid:envelope" class="action-icon" />
+                  <span>联系我们</span>
+                </button>
+                <button class="action-item dropdown-item" style="--i: 9" @click="handleFeedbackClick">
+                  <Icon icon="fa6-solid:comment-dots" class="action-icon" />
+                  <span>意见反馈</span>
+                </button>
+                <button class="action-item danger dropdown-item" style="--i: 10" @click="logoutFromModal">
+                  <Icon icon="fa6-solid:arrow-right-from-bracket" class="action-icon" />
+                  <span>注销账号</span>
                 </button>
               </div>
-              <div class="modal-actions dropdown-item" style="--i: 4">
-                <button class="modal-btn" @click="closeUserModal">关闭</button>
-                <button class="modal-btn danger" @click="logoutFromModal">退出登录</button>
-              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <Transition
+        :css="false"
+        @before-enter="onFadeBeforeEnter"
+        @enter="onFadeEnter"
+        @leave="onFadeLeave"
+      >
+        <div v-if="showContactModal" class="dropdown-shell" @click="closeContactModal">
+          <Transition
+            :css="false"
+            @before-enter="onDropdownPanelBeforeEnter"
+            @enter="(el, done) => onDropdownPanelEnter(el, done, 'user')"
+            @leave="onDropdownPanelLeave"
+          >
+            <div class="user-modal dropdown-panel" :style="userDropdownStyle" @click.stop>
+              <ContactModal @back="backToUserModal" />
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <Teleport to="body">
+      <Transition
+        :css="false"
+        @before-enter="onFadeBeforeEnter"
+        @enter="onFadeEnter"
+        @leave="onFadeLeave"
+      >
+        <div v-if="showFeedbackModal" class="dropdown-shell" @click="closeFeedbackModal">
+          <Transition
+            :css="false"
+            @before-enter="onDropdownPanelBeforeEnter"
+            @enter="(el, done) => onDropdownPanelEnter(el, done, 'user')"
+            @leave="onDropdownPanelLeave"
+          >
+            <div class="user-modal dropdown-panel" :style="userDropdownStyle" @click.stop>
+              <FeedbackModal @back="backToUserModal" @submit="handleFeedbackSubmit" />
             </div>
           </Transition>
         </div>
@@ -353,6 +447,8 @@ import { fileToDataUrl } from '@/shared/utils/fileToDataUrl';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
 import brandNameWhite from '../ditlogos/name_front_line.svg';
+import ContactModal from '@/shared/components/ContactModal.vue';
+import FeedbackModal from '@/shared/components/FeedbackModal.vue';
 
 const taskStore = useTaskStore();
 const authStore = useAuthStore();
@@ -374,6 +470,8 @@ const bootstrapStores = async () => {
 const isSidebarCollapsed = ref(false);
 const isModelDrawerOpen = ref(false);
 const showUserModal = ref(false);
+const showContactModal = ref(false);
+const showFeedbackModal = ref(false);
 const showSettingsModal = ref(false);
 const showLoginPromptModal = ref(false);
 const showDeleteArchiveModal = ref(false);
@@ -652,8 +750,54 @@ const closeUserModal = () => {
   showUserModal.value = false;
 };
 
+const closeContactModal = () => {
+  showContactModal.value = false;
+};
+
+const closeFeedbackModal = () => {
+  showFeedbackModal.value = false;
+};
+
+const backToUserModal = () => {
+  showContactModal.value = false;
+  showFeedbackModal.value = false;
+  showUserModal.value = true;
+};
+
+const handleFeedbackSubmit = (feedback) => {
+  console.log('收到反馈:', feedback);
+  alert('感谢您的反馈！我们会尽快处理。');
+  closeFeedbackModal();
+};
+
 const logoutFromModal = async () => {
   await logout();
+};
+
+const handleHistoryClick = () => {
+  closeUserModal();
+  router.push('/my-content');
+};
+
+const handleNotificationClick = () => {
+  closeUserModal();
+  // TODO: 实现通知功能
+  console.log('打开使用通知');
+};
+
+const handleSwitchAccountClick = () => {
+  closeUserModal();
+  router.push('/login');
+};
+
+const handleContactClick = () => {
+  showUserModal.value = false;
+  showContactModal.value = true;
+};
+
+const handleFeedbackClick = () => {
+  showUserModal.value = false;
+  showFeedbackModal.value = true;
 };
 
 const closeLoginPromptModal = () => {
@@ -967,7 +1111,7 @@ const computeDropdownStyle = (anchorEl, placement, width) => {
 };
 
 const refreshDropdownPositions = () => {
-  userDropdownStyle.value = computeDropdownStyle(avatarBtnRef.value, 'top-right', 300);
+  userDropdownStyle.value = computeDropdownStyle(avatarBtnRef.value, 'top-right', 320);
   settingsDropdownStyle.value = computeDropdownStyle(settingsBtnRef.value, 'bottom-left', 560);
 };
 
@@ -1362,23 +1506,17 @@ nextTick(() => resizeComposer());
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--color-text-muted);
+  color: #94a3b8;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: color 0.18s ease;
+  font-size: 16px;
 }
 
 .history-delete:hover {
-  color: var(--color-danger);
-}
-
-.history-delete-icon {
-  width: 16px;
-  height: 16px;
-  display: block;
-  color: currentColor;
+  color: #ef4444;
 }
 
 
@@ -1805,14 +1943,150 @@ nextTick(() => resizeComposer());
 }
 
 .user-modal {
-  width: 280px;
+  width: 320px;
   border-radius: 12px;
   border: 1px solid var(--color-border);
   background: var(--color-bg-card);
   box-shadow: var(--shadow-elevated);
-  padding: 14px;
+  padding: 0;
   transform-origin: top right;
   color: var(--color-text-primary);
+  overflow: hidden;
+}
+
+.user-info-section {
+  padding: 20px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.user-avatar-icon {
+  width: 40px;
+  height: 40px;
+  color: #ffffff;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.user-email {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  text-align: center;
+  word-break: break-all;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0;
+}
+
+.theme-section {
+  padding: 14px 16px;
+}
+
+.theme-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 10px;
+}
+
+.theme-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.theme-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-soft);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.theme-option:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-primary);
+}
+
+.theme-option.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-primary-contrast);
+}
+
+.theme-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.theme-option span {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.actions-section {
+  padding: 8px 0;
+}
+
+.action-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.action-item:hover {
+  background: var(--color-bg-hover);
+}
+
+.action-item.danger {
+  color: var(--color-danger);
+}
+
+.action-item.danger:hover {
+  background: color-mix(in srgb, var(--color-danger) 8%, transparent);
+}
+
+.action-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: currentColor;
 }
 
 .settings-modal {

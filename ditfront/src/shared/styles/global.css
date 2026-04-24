@@ -32,6 +32,7 @@ body, html {
   --color-bg-card: rgba(255, 255, 255, 0.9);
   --color-bg-soft: #f4f7fc;
   --color-bg-soft-strong: #eef3fc;
+  --color-bg-hover: #e8f0fc;
   --color-bg-overlay: rgba(15, 23, 42, 0.32);
 
   --color-text-primary: #1b2430;
@@ -88,6 +89,7 @@ body, html {
   --color-bg-card: rgba(17, 24, 35, 0.94);
   --color-bg-soft: #19202b;
   --color-bg-soft-strong: #1f2733;
+  --color-bg-hover: #222936;
   --color-bg-overlay: rgba(0, 0, 0, 0.58);
 
   --color-text-primary: #e6edf6;

@@ -25,35 +25,72 @@
       <div class="chat-wrap">
         <p class="chat-title">最近对话</p>
         <div class="bubble-list">
-          <div
-            v-for="bubble in userBubbles"
-            :key="bubble.key"
-            class="bubble-item"
-            :class="{ 'bubble-item-new': !animatedBubbleKeys.includes(bubble.key) }"
-            :data-bubble-key="bubble.key"
-          >
-            <span v-if="showPublishedAuthor" class="bubble-author">{{ publishedAuthorName }}</span>
-            <div class="bubble user">
-              <div v-if="bubble.text" class="bubble-text">{{ bubble.text }}</div>
-              <img
-                  v-if="bubble.imagePreview"
-                  :src="bubble.imagePreview"
-                  class="bubble-image"
-                  alt="生成的图像"
-              />
+          <template v-for="bubble in userBubbles" :key="bubble.key">
+            <!-- 用户输入气泡（右侧） -->
+            <div
+              v-if="bubble.text"
+              class="bubble-item user-item"
+              :class="{ 'bubble-item-new': !animatedBubbleKeys.includes(bubble.key) }"
+              :data-bubble-key="bubble.key"
+            >
+              <div class="bubble-content">
+                <div class="bubble-header">
+                  <span class="bubble-author">{{ showPublishedAuthor ? publishedAuthorName : '我' }}</span>
+                  <span class="bubble-time">{{ formatDate(bubble.createdAt) }}</span>
+                </div>
+                <div class="bubble-row">
+                  <div class="bubble user">
+                    <div class="bubble-text">{{ bubble.text }}</div>
+                  </div>
+                  <div class="avatar user-avatar">
+                    <Icon icon="fa6-solid:user" />
+                  </div>
+                </div>
+              </div>
             </div>
-            <span class="bubble-time">{{ formatDate(bubble.createdAt) }}</span>
-          </div>
-          <div v-if="loadingTaskExists" class="bubble-item bubble-item-loading">
-            <div class="bubble loading">
-              <Icon icon="fa6-solid:arrows-rotate" class="bubble-loading-icon" />
-              <span>正在生成中...</span>
+
+            <!-- 助手回复气泡（左侧，包含图片和按钮） -->
+            <div
+              v-if="bubble.imagePreview"
+              class="bubble-item assistant-item"
+              :class="{ 'bubble-item-new': !animatedBubbleKeys.includes(bubble.key) }"
+              :data-bubble-key="`${bubble.key}-assistant`"
+            >
+              <div class="bubble-content">
+                <div class="bubble-header">
+                  <span class="bubble-author">见筑助手</span>
+                  <span class="bubble-time">{{ formatDate(bubble.createdAt) }}</span>
+                </div>
+                <div class="bubble-row">
+                  <div class="avatar assistant-avatar">
+                    <img :src="welcomeLogoBlack" alt="见筑" class="avatar-logo" />
+                  </div>
+                  <div class="bubble assistant">
+                    <img
+                      :src="bubble.imagePreview"
+                      class="bubble-image"
+                      alt="生成的图像"
+                    />
+                    <button
+                      class="panorama-btn"
+                      @click="goToViewer(bubble)"
+                    >
+                      Enjoy the panoramic view
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          </template>
           <p v-if="userBubbles.length === 0 && !loadingTaskExists" class="chat-empty">这个存档还没有对话，先输入你的想法吧。</p>
         </div>
       </div>
     </template>
+
+    <!-- 屏幕中央加载动画 -->
+    <div v-if="loadingTaskExists" class="loading-overlay">
+      <LoadingAnimation :size="576" />
+    </div>
   </section>
 </template>
 
@@ -65,6 +102,7 @@ import { gsap } from 'gsap';
 import { useTaskStore } from '@/packages/workspace/store/useTaskStore';
 import { useReducedMotion } from '@/shared/hooks/useReducedMotion';
 import { MOTION_DURATION, MOTION_EASE } from '@/shared/motion/preset';
+import LoadingAnimation from '@/shared/components/LoadingAnimation.vue';
 import welcomeLogoBlack from '../../../../ditlogos/Blank_transparent_black_logo.svg';
 import welcomeLogoWhite from '../../../../ditlogos/Blank_transparent_white_logo.svg';
 
@@ -103,6 +141,7 @@ const taskEntries = computed(() =>
       id: item.id,
       text: item.prompt,
       imagePreview: item.imagePreview,
+      imageName: item.imageName,
       createdAt: Number(item.createdAt) || Date.now()
     }))
 );
@@ -117,9 +156,26 @@ const historyEntries = computed(() => {
       id: item.id,
       text: item.prompt,
       imagePreview: item.imagePreview,
+      imageName: item.imageName,
       createdAt: Number(item.createdAt) || Date.now()
     }));
 });
+
+// 点击跳转事件
+const goToViewer = (bubble) => {
+  if (!bubble.imageName && !bubble.imagePreview && !bubble.id) return;
+
+  // 优先使用 imageName，其次使用 id 兜底
+  const rawName = bubble.imageName || bubble.id || 'untitled';
+  const formattedName = encodeURIComponent(rawName);
+
+  // 打开独立的 viewertool 页面并把图片名称作为 name 参数传递
+  // 同时如果有直接的图片 URL（imagePreview），也作为备用的 image 参数传入
+  const viewerPath = `${window.location.origin}/viewertool.html?name=${formattedName}`;
+  const imageParam = bubble.imagePreview ? `&image=${encodeURIComponent(bubble.imagePreview)}` : '';
+  // 使用新窗口打开，避免破坏当前 SPA 状态
+  window.open(viewerPath + imageParam, '_blank', 'noopener');
+};
 
 const userBubbles = computed(() =>
   [...taskEntries.value, ...historyEntries.value].sort((a, b) => a.createdAt - b.createdAt)
@@ -386,8 +442,72 @@ h2 {
 
 .bubble-item {
   display: grid;
-  justify-items: end;
   gap: 4px;
+}
+
+.bubble-item.user-item {
+  justify-items: end;
+}
+
+.bubble-item.assistant-item {
+  justify-items: start;
+  margin-top: 8px;
+}
+
+.bubble-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 80%;
+}
+
+.bubble-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.bubble-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.user-item .bubble-row {
+  flex-direction: row-reverse;
+}
+
+.assistant-item .bubble-row {
+  flex-direction: row;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.user-avatar {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.assistant-avatar {
+  background: white;
+  border: 1px solid var(--color-border);
+  padding: 4px;
+}
+
+.avatar-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .bubble {
@@ -401,6 +521,13 @@ h2 {
   box-shadow: var(--shadow-card);
 }
 
+.bubble.assistant {
+  border-radius: 14px 14px 14px 4px;
+  background: var(--color-bg-card);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
 .bubble-image {
   max-width: 100%;
   border-radius: 8px;
@@ -408,33 +535,68 @@ h2 {
   display: block;
 }
 
-.bubble.loading {
-  border-radius: 12px;
-  background: var(--color-bg-soft);
-  color: var(--color-text-secondary);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.bubble-loading-icon {
-  width: 14px;
-  height: 14px;
-  display: block;
-  color: currentColor;
-  animation: spin 1.2s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
 .bubble-author {
-  font-size: 12px;
-  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--color-text);
 }
 
 .bubble-time {
-  font-size: 11px;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* 屏幕中央加载动画覆盖层 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panorama-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--color-primary);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.panorama-btn:hover {
+  background-color: color-mix(in srgb, var(--color-primary) 85%, black);
+  transform: translateY(-2px);
+}
+
+.panorama-btn:active {
+  transform: translateY(0);
 }
 
 

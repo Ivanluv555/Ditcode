@@ -1,7 +1,7 @@
 <!--
   ViewerPage.vue
   ----------------
-  功能：全景图查看器页面。该页面使用 Three.js 渲染 2:1 全景图球体，避免 iframe 嵌入 demo.html。
+  功能：全景图查看器页面。该页面使用 Three.js 渲染 2:1 全景图球体，避免 iframe 嵌入 viewertool.html。
   - 通过 query 参数 image 获取平面全景图 URL 或 Base64 数据。
   - 工作完成后，前端应立即显示平面预览气泡，用户点击图片再跳转到此查看器。
 -->

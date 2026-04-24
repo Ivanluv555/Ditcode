@@ -96,8 +96,11 @@
             >
               <h3>{{ card.title }}</h3>
               <p>{{ card.desc }}</p>
-              <div class="feature-anim" :class="card.preview ? 'with-component' : `anim-${card.anim}`">
-                <template v-if="card.preview === 'editor'">
+              <div class="feature-anim" :class="card.preview ? 'with-component' : card.image ? 'with-image' : `anim-${card.anim}`">
+                <template v-if="card.image">
+                  <img :src="card.image" :alt="card.title" class="feature-image" />
+                </template>
+                <template v-else-if="card.preview === 'editor'">
                   <div class="workspace-preview workspace-preview-editor">
                     <EditorPanel preview-mode :preview-prompt="editorPreviewPrompt" />
                     <span class="workspace-shimmer" aria-hidden="true"></span>
@@ -123,52 +126,68 @@
 
     <section ref="scene3Ref" class="story-scene scene-3" :style="{ minHeight: sceneMinHeights.scene3 }">
       <div class="scene-stage">
-        <section ref="showcaseShellRef" class="showcase-shell">
-          <div class="showcase-nav mono">
-            <button
+        <section ref="showcaseShellRef" class="showcase-shell-v2">
+          <header class="showcase-header">
+            <h2 class="showcase-title">多样化风格展示</h2>
+            <p class="showcase-subtitle">从波西米亚到滨海风格，一键生成多种室内设计方案</p>
+          </header>
+
+          <div class="showcase-grid">
+            <article
               v-for="(item, index) in showcaseItems"
               :key="item.id"
-              class="showcase-tab"
+              class="showcase-card"
               :class="{ active: index === showcaseIndex }"
-              type="button"
               @click="selectShowcase(index)"
             >
-              {{ item.label }}
-            </button>
-          </div>
-          <div class="showcase-progress">
-            <span :style="{ width: showcaseProgressWidth }"></span>
-          </div>
-
-          <div class="showcase-main">
-            <button class="showcase-arrow" type="button" @click="prevShowcase" aria-label="上一张">
-              <Icon icon="fa6-solid:chevron-left" />
-            </button>
-
-            <div class="showcase-visual">
-              <div class="visual-stack">
-                <div class="visual-panel back"></div>
-                <div class="visual-panel middle"></div>
-                <div class="visual-panel front">
-                  <span class="bar long"></span>
-                  <span class="bar"></span>
-                  <span class="bar"></span>
-                  <span class="bar short"></span>
-                  <div class="visual-grid">
-                    <span></span>
-                    <span></span>
+              <div class="card-visual">
+                <img v-if="item.image" :src="item.image" :alt="item.title" class="showcase-image" />
+                <div v-else class="visual-stack">
+                  <div class="visual-panel back"></div>
+                  <div class="visual-panel middle"></div>
+                  <div class="visual-panel front">
+                    <span class="bar long"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar short"></span>
+                    <div class="visual-grid">
+                      <span></span>
+                      <span></span>
+                    </div>
                   </div>
                 </div>
+                <div class="card-overlay">
+                  <span class="card-badge mono">{{ String(index + 1).padStart(2, '0') }}</span>
+                </div>
               </div>
-            </div>
-
-            <article class="showcase-copy">
-              <h2>{{ currentShowcase.title }}</h2>
-              <p>{{ currentShowcase.desc }}</p>
-              <button type="button" class="showcase-cta">{{ currentShowcase.cta }}</button>
+              <div class="card-content">
+                <h3 class="card-label">{{ item.label }}</h3>
+                <p class="card-title">{{ item.title }}</p>
+                <p class="card-desc">{{ item.desc }}</p>
+                <button type="button" class="card-cta">
+                  <span>{{ item.cta }}</span>
+                  <Icon icon="fa6-solid:arrow-right" />
+                </button>
+              </div>
             </article>
+          </div>
 
-            <button class="showcase-arrow" type="button" @click="nextShowcase" aria-label="下一张">
+          <div class="showcase-controls">
+            <button class="control-btn" type="button" @click="prevShowcase" aria-label="上一张">
+              <Icon icon="fa6-solid:chevron-left" />
+            </button>
+            <div class="control-dots">
+              <button
+                v-for="(item, index) in showcaseItems"
+                :key="item.id"
+                class="dot"
+                :class="{ active: index === showcaseIndex }"
+                type="button"
+                @click="selectShowcase(index)"
+                :aria-label="`切换到${item.label}`"
+              ></button>
+            </div>
+            <button class="control-btn" type="button" @click="nextShowcase" aria-label="下一张">
               <Icon icon="fa6-solid:chevron-right" />
             </button>
           </div>
@@ -327,7 +346,8 @@ const featureCards = [
     short: '识别',
     title: '平面图识别',
     desc: '自动提取空间结构、区域关系与关键路径。',
-    anim: 'pulse'
+    anim: 'pulse',
+    image: '/assets/imgforregister/linewhite.jpg'
   },
   {
     id: 'prompt',
@@ -342,7 +362,8 @@ const featureCards = [
     short: '生成',
     title: '360° 全景生成',
     desc: '一键输出可漫游全景图，适配多端浏览。',
-    anim: 'orbit'
+    anim: 'orbit',
+    image: '/assets/imgforregister/pan.png'
   },
   {
     id: 'remix',
@@ -350,46 +371,52 @@ const featureCards = [
     title: '设计资产组织',
     desc: '户型、材质、灯光等方案资产可统一管理与复用。',
     anim: 'nodes',
-    preview: 'task'
+    preview: 'task',
+    image: '/assets/imgforregister/part.jpg'
   },
   {
     id: 'policy',
     short: '治理',
     title: '协作与治理',
     desc: '支持 Remix 协作、版本追踪与版权链路管理。',
-    anim: 'cutoff'
+    anim: 'cutoff',
+    image: '/assets/imgforregister/social.png'
   }
 ];
 
 // 4个板块的内容
 const showcaseItems = [
   {
-    id: 'research',
-    label: '户型重建',
-    title: 'Floorplan Rebuild',
-    desc: '从 2D 户型图快速重建 3D 室内空间结构。',
-    cta: '查看重建效果'
+    id: 'bohemian',
+    label: '波西米亚风格',
+    title: 'Bohemian Style',
+    desc: '自由奔放的色彩搭配，融合民族元素与艺术气息，打造独特个性空间。',
+    cta: '查看波西米亚风格',
+    image: '/assets/imgforregister/bxsimia.png'
   },
   {
-    id: 'coach',
-    label: '材质搭配',
-    title: 'Material Studio',
-    desc: '批量替换材质与配色，快速产出多套风格方案。',
-    cta: '查看材质方案'
+    id: 'modern',
+    label: '现代艺术风格',
+    title: 'Modern Art Style',
+    desc: '简约线条与艺术装饰完美结合，展现当代审美与生活品味。',
+    cta: '查看现代艺术风格',
+    image: '/assets/imgforregister/modern.png'
   },
   {
-    id: 'create',
-    label: '灯光预演',
-    title: 'Lighting Preview',
-    desc: '模拟自然光与灯光参数，提前预览空间氛围。',
-    cta: '查看灯光预演'
+    id: 'japanese',
+    label: '日式风格',
+    title: 'Japanese Style',
+    desc: '禅意美学与自然材质的和谐统一，营造宁静舒适的居住氛围。',
+    cta: '查看日式风格',
+    image: '/assets/imgforregister/nihon.png'
   },
   {
-    id: 'learn',
-    label: '方案评审',
-    title: 'Design Review',
-    desc: '通过可漫游全景进行远程评审与修改反馈。',
-    cta: '进入评审空间'
+    id: 'coastal',
+    label: '滨海风格',
+    title: 'Coastal Style',
+    desc: '清新海洋色调与自然光线交织，带来度假般的轻松惬意体验。',
+    cta: '查看滨海风格',
+    image: '/assets/imgforregister/sealand.png'
   }
 ];
 
@@ -576,17 +603,19 @@ const handleViewportResize = () => {
 };
 
 const scrollToRegister = () => {
-  if (!scene4Ref.value) return;
-  const scroller = getActiveScroller();
-  if (scroller === window) {
-    const targetTop = scene4Ref.value.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: targetTop, behavior: prefersReducedMotion.value ? 'auto' : 'smooth' });
+  console.log('scrollToRegister called');
+  if (!scene4Ref.value) {
+    console.error('scene4Ref is null');
     return;
   }
 
-  const containerRect = scroller.getBoundingClientRect();
-  const targetTop = scene4Ref.value.getBoundingClientRect().top - containerRect.top + scroller.scrollTop;
-  scroller.scrollTo({ top: targetTop, behavior: prefersReducedMotion.value ? 'auto' : 'smooth' });
+  // 直接使用 scrollIntoView，更可靠
+  scene4Ref.value.scrollIntoView({
+    behavior: prefersReducedMotion.value ? 'auto' : 'smooth',
+    block: 'start'
+  });
+
+  console.log('scrollIntoView called on scene4Ref');
 };
 
 const setupGlow = () => {
@@ -1259,6 +1288,20 @@ onBeforeUnmount(() => {
   background: linear-gradient(145deg, rgba(59, 130, 246, 0.08), rgba(30, 41, 59, 0.02));
 }
 
+.feature-anim.with-image {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.feature-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  display: block;
+}
+
 .workspace-preview {
   position: relative;
   width: 100%;
@@ -1488,6 +1531,265 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 第三幕新样式 - 卡片网格布局 */
+.showcase-shell-v2 {
+  width: min(1400px, 96vw);
+  margin: 0 auto;
+  padding: clamp(20px, 3.6vw, 48px);
+  box-sizing: border-box;
+}
+
+.showcase-header {
+  text-align: center;
+  margin-bottom: clamp(32px, 5vh, 56px);
+}
+
+.showcase-title {
+  margin: 0;
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--text-color);
+}
+
+.showcase-subtitle {
+  margin: 12px 0 0;
+  font-size: clamp(16px, 2vw, 20px);
+  color: var(--muted-color);
+  line-height: 1.6;
+}
+
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: clamp(20px, 3vw, 32px);
+  margin-bottom: clamp(32px, 4vh, 48px);
+}
+
+.showcase-card {
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--border-color) 88%, transparent);
+  background: color-mix(in srgb, var(--surface-color) 96%, transparent);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  position: relative;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.showcase-card:hover {
+  transform: translateY(-8px) translateZ(0);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+  border-color: color-mix(in srgb, var(--accent-color) 40%, transparent);
+}
+
+.showcase-card.active {
+  border-color: color-mix(in srgb, var(--accent-color) 60%, transparent);
+  box-shadow: 0 24px 48px rgba(59, 130, 246, 0.2);
+  transform: translateY(-12px) scale(1.02) translateZ(0);
+}
+
+.card-visual {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  background: #03060e;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.showcase-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  padding: 0;
+}
+
+.card-visual .visual-stack {
+  position: relative;
+  height: 100%;
+}
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+
+.showcase-card:hover .card-overlay,
+.showcase-card.active .card-overlay {
+  opacity: 1;
+}
+
+.card-badge {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(59, 130, 246, 0.9);
+  padding: 6px 12px;
+  border-radius: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.card-content {
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.card-label {
+  margin: 0 0 8px;
+  font-size: clamp(20px, 2.5vw, 24px);
+  font-weight: 700;
+  color: var(--text-color);
+  line-height: 1.2;
+}
+
+.card-title {
+  margin: 0 0 8px;
+  font-size: clamp(16px, 1.8vw, 18px);
+  font-weight: 600;
+  color: var(--accent-color);
+  line-height: 1.3;
+}
+
+.card-desc {
+  margin: 0 0 16px;
+  font-size: clamp(14px, 1.5vw, 15px);
+  color: var(--muted-color);
+  line-height: 1.6;
+}
+
+.card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: linear-gradient(120deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 80%, #87c4ff));
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.card-cta:hover {
+  transform: translateX(4px) translateZ(0);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.card-cta :deep(svg) {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.3s ease;
+  will-change: transform;
+}
+
+.card-cta:hover :deep(svg) {
+  transform: translateX(4px) translateZ(0);
+}
+
+.showcase-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.control-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  background: color-mix(in srgb, var(--surface-color) 95%, transparent);
+  color: var(--accent-color);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.control-btn:hover {
+  background: var(--accent-color);
+  color: #fff;
+  transform: scale(1.1) translateZ(0);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.control-btn :deep(svg) {
+  width: 18px;
+  height: 18px;
+}
+
+.control-dots {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--border-color) 90%, transparent);
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.dot.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  transform: scale(1.3) translateZ(0);
+}
+
+.dot:hover:not(.active) {
+  background: color-mix(in srgb, var(--accent-color) 40%, transparent);
+  border-color: var(--accent-color);
+  transform: scale(1.15) translateZ(0);
+}
+
+/* 响应式布局 */
+@media (max-width: 1024px) {
+  .showcase-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .showcase-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .card-visual {
+    height: 200px;
+  }
+}
+
+/* 旧的第三幕样式（保留用于兼容） */
 .showcase-shell {
   width: min(1500px, 96vw);
   margin: 0 auto;
