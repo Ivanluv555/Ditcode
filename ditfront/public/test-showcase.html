@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面 - 优秀案例</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        .test-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background: #3a3a3a;
+            color: #4CAF50;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        .test-link:hover {
+            background: #4a4a4a;
+        }
+        img {
+            max-width: 300px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>优秀案例页面测试</h1>
+
+    <div class="test-section">
+        <h2>1. 页面路由测试</h2>
+        <a class="test-link" href="/featured" target="_blank">访问优秀案例页 (/featured)</a>
+        <a class="test-link" href="/showcase" target="_blank">访问优秀案例页 (/showcase)</a>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 全景图资源测试</h2>
+        <h3>森林场景</h3>
+        <img src="/userN/forest.png" alt="森林全景" onerror="this.style.border='2px solid red'">
+        <a class="test-link" href="/userN/forest.png" target="_blank">查看森林全景原图</a>
+
+        <h3>海景场景</h3>
+        <img src="/userN/sea.png" alt="海景全景" onerror="this.style.border='2px solid red'">
+        <a class="test-link" href="/userN/sea.png" target="_blank">查看海景全景原图</a>
+
+        <h3>图书馆场景</h3>
+        <img src="/userN/library.png" alt="图书馆全景" onerror="this.style.border='2px solid red'">
+        <a class="test-link" href="/userN/library.png" target="_blank">查看图书馆全景原图</a>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 多图层查看器测试</h2>
+        <a class="test-link" href="/multilayer-viewer.html?scene=forest" target="_blank">打开森林场景多图层查看器</a>
+        <a class="test-link" href="/multilayer-viewer.html?scene=sea" target="_blank">打开海景场景多图层查看器</a>
+        <a class="test-link" href="/multilayer-viewer.html?scene=library" target="_blank">打开图书馆场景多图层查看器</a>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 局部图层测试</h2>
+        <h3>森林场景部件</h3>
+        <img src="/userN/forest/item_sofa_hover.png" alt="沙发" onerror="this.style.border='2px solid red'">
+        <img src="/userN/forest/item_tvbench_hover.png" alt="电视柜" onerror="this.style.border='2px solid red'">
+        <img src="/userN/forest/item_window_hover.png" alt="窗户" onerror="this.style.border='2px solid red'">
+    </div>
+
+    <script>
+        console.log('测试页面已加载');
+        console.log('当前URL:', window.location.href);
+
+        // 测试图片加载
+        const images = document.querySelectorAll('img');
+        images.forEach((img, index) => {
+            img.onload = () => console.log(`✓ 图片 ${index + 1} 加载成功:`, img.src);
+            img.onerror = () => console.error(`✗ 图片 ${index + 1} 加载失败:`, img.src);
+        });
+    </script>
+</body>
+</html>

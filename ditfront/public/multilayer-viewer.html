@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多图层全景查看器</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #webgl-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #webgl-canvas:active {
+            cursor: grabbing;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 8px;
+            display: none;
+            pointer-events: none;
+        }
+
+        #scene-selector {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+        }
+
+        .scene-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .scene-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+        }
+
+        .scene-btn.active {
+            background: rgba(76, 175, 80, 0.8);
+            border-color: #4CAF50;
+        }
+
+        #info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<canvas id="webgl-canvas"></canvas>
+
+<div id="loading">加载全景中...</div>
+
+<div id="scene-selector">
+    <button class="scene-btn" data-scene="forest">森林场景</button>
+    <button class="scene-btn" data-scene="sea">海景场景</button>
+    <button class="scene-btn" data-scene="library">图书馆场景</button>
+</div>
+
+<div id="info-panel">
+    鼠标拖拽旋转 | 滚轮缩放
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import * as TWEEN from '@tweenjs/tween.js';
+
+    // 场景配置
+    const SCENES = {
+        forest: {
+            name: '森林场景',
+            base: '/userN/forest.png',
+            items: [
+                { name: 'sofa', texture: '/userN/forest/item_sofa_hover.png' },
+                { name: 'tvbench', texture: '/userN/forest/item_tvbench_hover.png' },
+                { name: 'window', texture: '/userN/forest/item_window_hover.png' }
+            ]
+        },
+        sea: {
+            name: '海景场景',
+            base: '/userN/sea.png',
+            items: [
+                { name: 'tea_table', texture: '/userN/sea/item_tea table_hover.png' },
+                { name: 'cabinet', texture: '/userN/sea/item_cabinet_hover.png' }
+            ]
+        },
+        library: {
+            name: '图书馆场景',
+            base: '/userN/library.png',
+            items: [
+                { name: 'bookshelf', texture: '/userN/library/item_bookshelf_hover.png' },
+                { name: 'fireplace', texture: '/userN/library/item_fireplace_hover.png' },
+                { name: 'table', texture: '/userN/library/item_table_hover.png' },
+                { name: 'sofa', texture: '/userN/library/item_sofa_hover.png' }
+            ]
+        }
+    };
+
+    class MultiLayerPanoramaEngine {
+        constructor() {
+            this.canvas = document.getElementById('webgl-canvas');
+            this.loadingUI = document.getElementById('loading');
+
+            // 场景设置
+            this.scene = new THREE.Scene();
+            this.scene.background = new THREE.Color(0x111111);
+
+            // 相机设置
+            this.camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            this.camera.position.set(0, 0, 0.1);
+
+            // 渲染器设置
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.canvas,
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // 控制器设置
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+            this.controls.dampingFactor = 0.05;
+            this.controls.enablePan = false;
+            this.controls.minDistance = 0;
+            this.controls.maxDistance = 100;
+
+            // 存储当前场景的球体层
+            this.baseSphere = null;
+            this.itemSpheres = [];
+
+            window.addEventListener('resize', this.onWindowResize.bind(this));
+
+            this.animate = this.animate.bind(this);
+            requestAnimationFrame(this.animate);
+        }
+
+        // 加载多图层全景场景
+        async loadMultiLayerScene(sceneConfig) {
+            this.loadingUI.style.display = 'block';
+
+            try {
+                // 清理旧场景
+                this.clearScene();
+
+                const textureLoader = new THREE.TextureLoader();
+
+                // 1. 加载底层全景图
+                const baseTexture = await textureLoader.loadAsync(sceneConfig.base);
+                baseTexture.colorSpace = THREE.SRGBColorSpace;
+                baseTexture.minFilter = THREE.LinearFilter;
+                baseTexture.generateMipmaps = false;
+
+                const baseGeometry = new THREE.SphereGeometry(500, 60, 40);
+                const baseMaterial = new THREE.MeshBasicMaterial({
+                    map: baseTexture,
+                    side: THREE.BackSide,
+                    transparent: false,
+                    depthWrite: true,
+                    depthTest: true
+                });
+
+                this.baseSphere = new THREE.Mesh(baseGeometry, baseMaterial);
+                this.scene.add(this.baseSphere);
+
+                // 2. 加载并叠加所有局部全景图（hover版本）
+                const itemPromises = sceneConfig.items.map(async (item, index) => {
+                    try {
+                        const itemTexture = await textureLoader.loadAsync(item.texture);
+                        itemTexture.colorSpace = THREE.SRGBColorSpace;
+                        itemTexture.minFilter = THREE.LinearFilter;
+                        itemTexture.generateMipmaps = false;
+
+                        // 创建与底层相同大小的球体
+                        const itemGeometry = new THREE.SphereGeometry(502, 60, 40);
+                        const itemMaterial = new THREE.MeshBasicMaterial({
+                            map: itemTexture,
+                            side: THREE.BackSide,
+                            transparent: true,
+                            opacity: 1.0, // 完全不透明
+                            depthWrite: false,
+                            depthTest: true,
+                            alphaTest: 0.1 // 过滤透明像素
+                        });
+
+                        const itemSphere = new THREE.Mesh(itemGeometry, itemMaterial);
+                        itemSphere.userData.itemName = item.name;
+
+                        this.scene.add(itemSphere);
+                        this.itemSpheres.push(itemSphere);
+
+                        console.log(`✓ 加载hover图层: ${item.name}`);
+
+                        return itemSphere;
+                    } catch (error) {
+                        console.warn(`加载局部图层 ${item.name} 失败:`, error);
+                        return null;
+                    }
+                });
+
+                await Promise.all(itemPromises);
+
+                console.log('✓ 场景加载完成');
+                console.log('  - 底层球体:', this.baseSphere ? '已加载' : '未加载');
+                console.log('  - hover图层数量:', this.itemSpheres.length);
+                console.log('  - 所有图层已叠加显示');
+
+                // 淡入动画
+                this.fadeInScene();
+
+            } catch (error) {
+                console.error("加载多图层全景失败:", error);
+                alert("场景加载失败，请检查资源路径。");
+            } finally {
+                this.loadingUI.style.display = 'none';
+            }
+        }
+
+        // 清理当前场景
+        clearScene() {
+            if (this.baseSphere) {
+                this.scene.remove(this.baseSphere);
+                this.baseSphere.material.map?.dispose();
+                this.baseSphere.material.dispose();
+                this.baseSphere.geometry.dispose();
+                this.baseSphere = null;
+            }
+
+            this.itemSpheres.forEach(sphere => {
+                this.scene.remove(sphere);
+                sphere.material.map?.dispose();
+                sphere.material.dispose();
+                sphere.geometry.dispose();
+            });
+            this.itemSpheres = [];
+        }
+
+        // 淡入动画
+        fadeInScene() {
+            const allMeshes = [this.baseSphere, ...this.itemSpheres].filter(Boolean);
+
+            allMeshes.forEach((mesh, index) => {
+                mesh.material.transparent = true;
+                mesh.material.opacity = 0;
+
+                new TWEEN.Tween(mesh.material)
+                    .to({ opacity: 1 }, 1000)
+                    .delay(index * 150)
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => {
+                        // 保持透明以支持alpha通道
+                        mesh.material.transparent = true;
+                    })
+                    .start();
+            });
+        }
+
+        onWindowResize() {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        animate(time) {
+            requestAnimationFrame(this.animate);
+            this.controls.update();
+            TWEEN.update(time);
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
+    // 应用初始化
+    window.onload = () => {
+        const engine = new MultiLayerPanoramaEngine();
+
+        // 场景切换按钮
+        const sceneButtons = document.querySelectorAll('.scene-btn');
+        sceneButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const sceneName = btn.dataset.scene;
+                const sceneConfig = SCENES[sceneName];
+
+                if (sceneConfig) {
+                    // 更新按钮状态
+                    sceneButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // 加载场景
+                    engine.loadMultiLayerScene(sceneConfig);
+                }
+            });
+        });
+
+        // URL 参数支持
+        const params = new URLSearchParams(window.location.search);
+        const sceneParam = params.get('scene') || 'forest';
+
+        if (SCENES[sceneParam]) {
+            const defaultBtn = document.querySelector(`[data-scene="${sceneParam}"]`);
+            if (defaultBtn) {
+                defaultBtn.classList.add('active');
+            }
+            engine.loadMultiLayerScene(SCENES[sceneParam]);
+        }
+    };
+</script>
+</body>
+</html>

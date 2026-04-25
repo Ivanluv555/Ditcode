@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>见筑全景查看器</title>
+    <style>
+        /* 重置基础样式 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        /* 画布占满全屏 */
+        #webgl-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+
+        #webgl-canvas:active {
+            cursor: grabbing;
+        }
+
+        /* UI 覆盖层样式 */
+        #ui-layer {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px 30px;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: opacity 0.3s ease;
+        }
+
+        /* 隐藏掉原生文件输入框 */
+        #file-input {
+            display: none;
+        }
+
+        /* 自定义按钮样式 */
+        .upload-btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .upload-btn:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .upload-btn:active {
+            transform: translateY(0);
+        }
+
+        .instructions {
+            font-size: 14px;
+            color: #ccc;
+            text-align: center;
+            margin: 0;
+        }
+
+        /* 加载动画指示器 */
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px 40px;
+            border-radius: 8px;
+            display: none; /* 默认隐藏 */
+            pointer-events: none;
+        }
+
+        /* 隐藏 UI 按钮 */
+        #toggle-ui-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+        #toggle-ui-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+
+    <!-- 导入 Import Map，用于解析 ES Modules 模块路径 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@tweenjs/tween.js": "https://unpkg.com/@tweenjs/tween.js@23.1.1/dist/tween.esm.js"
+            }
+        }
+    </script>
+</head>
+<body>
+
+<!-- Three.js 渲染目标画布 -->
+<canvas id="webgl-canvas"></canvas>
+
+<!-- UI 控制层 -->
+<div id="ui-layer">
+    <input type="file" id="file-input" accept="image/jpeg, image/png, image/webp">
+    <p class="instructions">鼠标拖拽旋转，滚轮缩放</p>
+</div>
+
+<!-- 加载提示 -->
+<div id="loading">生成全景中，请稍候...</div>
+
+<!-- 主逻辑脚本 -->
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import * as TWEEN from '@tweenjs/tween.js';
+
+    class PanoramaEngine {
+        constructor() {
+            this.canvas = document.getElementById('webgl-canvas');
+            this.loadingUI = document.getElementById('loading');
+
+            // --- 1. 基础场景设置 ---
+            this.scene = new THREE.Scene();
+            // 设置一个深灰色背景，以防图片未加载时全黑
+            this.scene.background = new THREE.Color(0x111111);
+
+            // --- 2. 相机设置 ---
+            // fov: 75 (视角广度), aspect: 宽高比, near: 0.1, far: 1000
+            this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            // 【核心】将相机放在坐标原点，以便从球体内部观察
+            this.camera.position.set(0, 0, 0.1); // Z稍微偏移一点点，防止OrbitControls算错极点
+
+            // --- 3. 渲染器设置 ---
+            this.renderer = new THREE.WebGLRenderer({
+                canvas: this.canvas,
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+            // --- 4. 控制器设置 ---
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true; // 开启丝滑的阻尼惯性
+            this.controls.dampingFactor = 0.05;
+            this.controls.enablePan = false; // 全景图中禁止平移相机
+            this.controls.minDistance = 0;
+            this.controls.maxDistance = 100; // 防止缩放退出球体外部
+
+            // 记录当前显示的全景球体
+            this.currentSphere = null;
+
+            // 绑定窗口调整事件
+            window.addEventListener('resize', this.onWindowResize.bind(this));
+
+            // 开始动画循环
+            this.animate = this.animate.bind(this);
+            requestAnimationFrame(this.animate);
+
+            // 创建初始的网格球体（作为占位符）
+            this.createPlaceholder();
+        }
+
+        // 创建一个默认的线框球体
+        createPlaceholder() {
+            const geometry = new THREE.SphereGeometry(500, 60, 40);
+            const material = new THREE.MeshBasicMaterial({
+                color: 0x444444,
+                wireframe: true,
+                side: THREE.BackSide
+            });
+            this.currentSphere = new THREE.Mesh(geometry, material);
+            this.scene.add(this.currentSphere);
+        }
+
+        // 核心：加载并应用全景图，带淡入淡出过渡
+        async loadPanorama(imageUrl) {
+            this.loadingUI.style.display = 'block';
+
+            try {
+                // 1. 加载纹理
+                const textureLoader = new THREE.TextureLoader();
+                // 允许跨域加载（若后端启用了 CORS）
+                if (typeof textureLoader.setCrossOrigin === 'function') textureLoader.setCrossOrigin('anonymous');
+                textureLoader.crossOrigin = 'anonymous';
+                const texture = await textureLoader.loadAsync(imageUrl);
+
+                // 优化纹理设置
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.flipY = true; // 保持默认，防止上下颠倒
+                texture.minFilter = THREE.LinearFilter;
+                texture.generateMipmaps = false; // 提升性能
+
+                // 2. 创建新球体与材质
+                const geometry = new THREE.SphereGeometry(500, 60, 40);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.BackSide, // 【核心】只渲染内表面
+                    transparent: true,    // 开启透明，为了实现淡入动画
+                    opacity: 0,           // 初始透明度为0
+                    depthWrite: true,
+                    depthTest: true
+                });
+
+                const newSphere = new THREE.Mesh(geometry, material);
+                this.scene.add(newSphere);
+
+                // 3. 使用 TWEEN 实现新旧场景的平滑过渡 (交叉淡入淡出)
+                new TWEEN.Tween(material)
+                    .to({ opacity: 1 }, 1000) // 1秒内透明度从0到1
+                    .easing(TWEEN.Easing.Quadratic.Out)
+                    .onComplete(() => {
+                        // 动画结束后，清理旧球体以释放内存
+                        if (this.currentSphere) {
+                            this.scene.remove(this.currentSphere);
+                            if (this.currentSphere.material.map) {
+                                this.currentSphere.material.map.dispose();
+                            }
+                            this.currentSphere.material.dispose();
+                            this.currentSphere.geometry.dispose();
+                        }
+                        // 将新球体设为当前球体
+                        this.currentSphere = newSphere;
+                    })
+                    .start();
+
+            } catch (error) {
+                console.error("加载全景图片失败:", error);
+                alert("图片加载失败，请确保格式正确。");
+            } finally {
+                this.loadingUI.style.display = 'none';
+            }
+        }
+
+        onWindowResize() {
+            this.camera.aspect = window.innerWidth / window.innerHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        animate(time) {
+            requestAnimationFrame(this.animate);
+
+            // 更新阻尼控制器
+            this.controls.update();
+            // 更新过渡动画
+            TWEEN.update(time);
+
+            // 渲染场景
+            this.renderer.render(this.scene, this.camera);
+        }
+    }
+
+    // --- 应用初始化与事件绑定 ---
+    window.onload = () => {
+        const engine = new PanoramaEngine();
+
+        // 处理文件上传
+        const fileInput = document.getElementById('file-input');
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // 创建本地对象的 URL，避免将大图片转为 Base64 导致卡顿
+            const objectUrl = URL.createObjectURL(file);
+
+            engine.loadPanorama(objectUrl).then(() => {
+                // 释放对象 URL 内存 (在稍后安全的时间点)
+                setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+            });
+
+            // 清空 input 值，允许重复上传同一张图片进行测试
+            fileInput.value = '';
+        });
+
+        // 解析 URL 参数：优先使用 image 参数（通常是 /api/assets/asset_xxx.png），否则使用 name 参数向后端请求
+        const params = new URLSearchParams(window.location.search);
+        const nameParam = params.get('name');
+        const imageParam = params.get('image');
+
+        // 后端 API 基址（直接访问后端服务器以避免本地静态服务器不支持代理）
+        const API_BASE = 'http://47.237.188.77:3100';
+
+        // Helper: normalize and load an image URL (may be relative like /api/..., absolute http(s) or data: uri)
+        const normalizeApiUrl = (url) => {
+            if (!url) return url;
+            const trimmed = url.trim();
+            // data: or blob: or full http(s) - leave as is
+            if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || /^https?:\/\//i.test(trimmed)) return trimmed;
+            // handle '/api/...', 'api/...' or paths that include '/api/' anywhere
+            if (trimmed.startsWith('/api/') || trimmed.startsWith('api/') || trimmed.includes('/api/')) {
+                const path = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+                return `${API_BASE}${path}`;
+            }
+            return trimmed;
+        };
+
+        const loadImageUrl = async (url) => {
+            const finalUrl = normalizeApiUrl(url);
+            try {
+                await engine.loadPanorama(finalUrl);
+            } catch (e) {
+                console.error('加载图片 URL 失败：', e);
+                alert('加载图片失败：' + (e?.message || e));
+            }
+        };
+
+        if (imageParam) {
+            // 如果调用方已经传入 image 参数（例如 /api/assets/asset_....png），直接使用它
+            const decoded = decodeURIComponent(imageParam);
+            loadImageUrl(decoded);
+        } else if (nameParam) {
+            // 若只有 name，则构造后端请求路径。后端示例使用 asset_ 前缀（asset_task_xxx.png）
+            let assetName = nameParam;
+            if (!assetName.startsWith('asset_')) {
+                assetName = `asset_${assetName}`;
+            }
+            // 确保具有图片后缀
+            if (!/\.(png|jpe?g|webp|gif)$/i.test(assetName)) {
+                assetName = `${assetName}.png`;
+            }
+
+            // 支持通过 query 传递 width（否则默认10），方便缩放请求
+            const widthFromQuery = params.get('width') || '10';
+            engine.loadingUI.style.display = 'block';
+
+            const fetchUrl = `${API_BASE}/api/assets/${encodeURIComponent(assetName)}?width=${encodeURIComponent(widthFromQuery)}`;
+
+            fetch(fetchUrl, { method: 'GET' })
+                .then(async (res) => {
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    const ct = (res.headers.get('content-type') || '').toLowerCase();
+
+                    if (ct.includes('application/json')) {
+                        const json = await res.json();
+                        if (json && json.url) return loadImageUrl(json.url);
+                        if (json && json.data && typeof json.data === 'string' && json.data.startsWith('data:')) return loadImageUrl(json.data);
+                        throw new Error('响应 JSON 中未包含可用图片 URL');
+                    }
+
+                    if (ct.startsWith('image/')) {
+                        const blob = await res.blob();
+                        const objectUrl = URL.createObjectURL(blob);
+                        await loadImageUrl(objectUrl);
+                        setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+                        return;
+                    }
+
+                    const text = await res.text();
+                    if (text && (text.startsWith('http') || text.startsWith('/'))) {
+                        return loadImageUrl(text.trim());
+                    }
+
+                    throw new Error('无法识别后端返回的图片格式');
+                })
+                .catch((err) => {
+                    console.error('从后端获取图片失败：', err);
+                    alert('无法从服务器获取图片：' + (err.message || err));
+                })
+                .finally(() => {
+                    engine.loadingUI.style.display = 'none';
+                });
+        }
+
+        // UI 隐藏/显示控制
+        const toggleBtn = document.getElementById('toggle-ui-btn');
+        const uiLayer = document.getElementById('ui-layer');
+        let uiVisible = true;
+
+        toggleBtn.addEventListener('click', () => {
+            uiVisible = !uiVisible;
+            uiLayer.style.opacity = uiVisible ? '1' : '0';
+            uiLayer.style.pointerEvents = uiVisible ? 'auto' : 'none';
+            toggleBtn.textContent = uiVisible ? '隐藏 UI' : '显示 UI';
+        });
+    };
+</script>
+</body>
+</html>
