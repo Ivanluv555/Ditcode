@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
  * GlobalExceptionHandler - 全局异常统一处理器。
- *
  * 业务角色：拦截应用中抛出的业务异常（ApiException）、验证异常和未处理异常，
  * 将它们转换为统一的JSON错误响应（ok=false + message），保证对外接口的一致性并隐藏内部细节。
  */

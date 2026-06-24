@@ -4,7 +4,6 @@ import org.springframework.http.HttpStatus;
 
 /**
  * ApiException - 应用层统一的业务异常封装。
- *
  * 业务角色：在控制器或服务层遇到可预期的业务错误时抛出，携带HTTP状态码与友好错误消息，
  * 由 GlobalExceptionHandler 捕获并转换为统一的HTTP响应。避免在业务代码中散落HTTP逻辑。
  */
