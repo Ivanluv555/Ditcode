@@ -173,7 +173,6 @@ npm run dev
 
 ## 联系方式
 
-- 项目地址：[https://gitee.com/HanPulin/ditcode](https://gitee.com/HanPulin/ditcode)
 - 问题反馈：通过 Gitee Issues 提交
 
 ---
