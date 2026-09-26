@@ -1,0 +1,22 @@
+# GitHub 资助配置文件
+# 更多信息: https://docs.github.com/cn/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+
+# 支持的平台:
+# github: # GitHub Sponsors 用户名（单个或数组）
+# patreon: # Patreon 用户名
+# open_collective: # Open Collective 项目名
+# ko_fi: # Ko-fi 用户名
+# tidelift: # Tidelift 包名（格式: npm/package-name 或 pypi/package-name）
+# community_bridge: # Community Bridge 项目名
+# liberapay: # Liberapay 用户名
+# issuehunt: # IssueHunt 用户名
+# otechie: # Otechie 用户名
+# lfx_crowdfunding: # LFX Crowdfunding 项目名
+# custom: # 自定义链接（最多 4 个）
+
+# 示例配置（取消注释并填写实际信息）:
+github: [Ivanluv555, Nasuraya7]
+patreon: ditcode
+open_collective: ditcode
+ko_fi: ditcode
+custom: ["https://ivanluv555.github.io/blog/sponsor"]

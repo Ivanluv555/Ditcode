@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 项目文档
+    url: https://gitee.com/HanPulin/ditcode/tree/master/ditdocs
+    about: 查看完整的项目文档和开发指南
+  - name: 💬 讨论区
+    url: https://gitee.com/HanPulin/ditcode/issues
+    about: 提问、讨论和分享想法
+  - name: 🌐 Gitee 仓库
+    url: https://gitee.com/HanPulin/ditcode
+    about: 访问项目的 Gitee 镜像仓库
